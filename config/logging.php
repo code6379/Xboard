@@ -33,6 +33,13 @@ return [
             'days' => 14,
         ],
 
+        'request' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/request.log'),
+            'level' => 'info',
+            'days' => 14,
+        ],
+
         'stderr' => [
             'driver' => 'monolog',
             'level' => env('LOG_LEVEL', 'debug'),
