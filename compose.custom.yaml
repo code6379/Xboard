@@ -1,38 +1,18 @@
 services:
-  xboard-init:
-    image: ghcr.io/cedar2025/xboard:latest
-    restart: "no"
-    entrypoint: []
-    command:
-      - /bin/sh
-      - -c
-      - |
-        set -eu
-        if [ ! -f /host-www/artisan ]; then
-          mkdir -p /host-www
-          cp -a /www/. /host-www/
-        fi
-        if [ ! -f /host-www/.env ] && [ -f /host-www/.env.example ]; then
-          cp /host-www/.env.example /host-www/.env
-        fi
-    volumes:
-      - ./www:/host-www
-    networks:
-      - xboard-net
-
   xboard:
     image: ghcr.io/cedar2025/xboard:latest
     restart: unless-stopped
-    depends_on:
-      xboard-init:
-        condition: service_completed_successfully
     ports:
       - "7001:7001"
     volumes:
       - ./www:/www
-      - ./redis-data:/data
+      - ./data/rdb:/data
+      - ./data/db:/www/.docker/.data
+      - ./data/logs:/www/storage/logs
+      - ./data/theme:/www/storage/theme
+      - ./data/plugins:/www/plugins
     environment:
-      - RESOURCE_PROFILE=balanced      # minimal | balanced | performance | auto
+      - RESOURCE_PROFILE=balanced
       - ENABLE_HORIZON=true
       - docker=true
     networks:
