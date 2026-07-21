@@ -10,7 +10,7 @@ echo "Cloning Xboard source..."
 git clone --depth 1 --branch "$XBOARD_BRANCH" --recurse-submodules "$XBOARD_REPO" www
 
 echo "Using Compose template: www/$COMPOSE_FILE"
-cp "www/$COMPOSE_FILE" "$COMPOSE_FILE"
+cp "www/$COMPOSE_FILE" compose.yaml
 
 echo "Installing Composer dependencies..."
 docker compose run --rm --entrypoint sh xboard -c 'cd /www && composer install --no-dev --optimize-autoloader -vvv'
