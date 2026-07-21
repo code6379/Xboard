@@ -7,6 +7,7 @@ use App\Models\Server;
 use App\Protocols\General;
 use App\Services\Plugin\HookManager;
 use App\Services\ServerService;
+use App\Services\SubscriptionDomainService;
 use App\Services\UserService;
 use App\Utils\Helper;
 use Illuminate\Http\Request;
@@ -71,6 +72,9 @@ class ClientController extends Controller
             allowedTypes: $requestedTypes,
             filterKeywords: $filterKeywords
         );
+
+        // 低流量用户只在订阅输出时替换域名，真实节点配置不会被修改。
+        $serversFiltered = app(SubscriptionDomainService::class)->maskServersForUser($user, $serversFiltered);
 
         $this->setSubscribeInfoToServers($serversFiltered, $user, count($servers) - count($serversFiltered));
         $serversFiltered = $this->addPrefixToServerName($serversFiltered);

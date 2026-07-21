@@ -4,6 +4,7 @@ namespace App\Http\Controllers\V1\Client;
 
 use App\Http\Controllers\Controller;
 use App\Services\ServerService;
+use App\Services\SubscriptionDomainService;
 use App\Services\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
@@ -18,6 +19,8 @@ class AppController extends Controller
         $userService = new UserService();
         if ($userService->isAvailable($user)) {
             $servers = ServerService::getAvailableServers($user);
+            // 与普通订阅保持一致，低流量用户只拿到替换后的节点域名。
+            $servers = app(SubscriptionDomainService::class)->maskServersForUser($user, $servers);
         }
         $defaultConfig = base_path() . '/resources/rules/app.clash.yaml';
         $customConfig = base_path() . '/resources/rules/custom.app.clash.yaml';
