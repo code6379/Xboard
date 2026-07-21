@@ -6,8 +6,8 @@ services:
       - "7001:7001"
     volumes:
       - ./www:/www
-      - ./data/rdb:/data
-      - ./data/db:/www/.docker/.data
+      - ./data/redis:/data
+      - ./data/database:/www/.docker/.data
       - ./data/logs:/www/storage/logs
       - ./data/theme:/www/storage/theme
       - ./data/plugins:/www/plugins
@@ -15,10 +15,3 @@ services:
       - RESOURCE_PROFILE=balanced
       - ENABLE_HORIZON=true
       - docker=true
-    networks:
-      - xboard-net
-
-networks:
-  xboard-net:
-    name: xboard-net
-    driver: bridge
