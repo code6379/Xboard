@@ -18,10 +18,11 @@ class AppController extends Controller
         $user = $request->user();
         $userService = new UserService();
         $subscriptionDomainService = app(SubscriptionDomainService::class);
-        if ($userService->isAvailable($user)) {
+        $isUserAvailable = $userService->isAvailable($user);
+        if ($isUserAvailable) {
             $servers = ServerService::getAvailableServers($user);
             // 与普通订阅保持一致，低流量用户只拿到替换后的节点域名。
-            $servers = $subscriptionDomainService->maskServersForUser($user, $servers);
+            $servers = $subscriptionDomainService->maskServersForUser($user, $request, $servers);
         }
         $defaultConfig = base_path() . '/resources/rules/app.clash.yaml';
         $customConfig = base_path() . '/resources/rules/custom.app.clash.yaml';
@@ -63,7 +64,9 @@ class AppController extends Controller
         $response = Yaml::dump($config);
 
         // YAML 成功生成后才记录和通知，避免配置构建失败时误报。
-        $subscriptionDomainService->notifySuccessfulMaskedSubscription($user, $request, 'Clash 配置');
+        if ($isUserAvailable) {
+            $subscriptionDomainService->notifySuccessfulMaskedSubscription($user, $request, 'Clash 配置');
+        }
 
         return $response;
     }

@@ -75,7 +75,7 @@ class ClientController extends Controller
 
         // 低流量用户只在订阅输出时替换域名，真实节点配置不会被修改。
         $subscriptionDomainService = app(SubscriptionDomainService::class);
-        $serversFiltered = $subscriptionDomainService->maskServersForUser($user, $serversFiltered);
+        $serversFiltered = $subscriptionDomainService->maskServersForUser($user, $request, $serversFiltered);
 
         $this->setSubscribeInfoToServers($serversFiltered, $user, count($servers) - count($serversFiltered));
         $serversFiltered = $this->addPrefixToServerName($serversFiltered);

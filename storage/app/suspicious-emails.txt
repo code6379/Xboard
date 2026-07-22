@@ -1,0 +1,13 @@
+# 每行填写一个异常邮箱，按完整邮箱匹配且不区分大小写。
+# 示例：example@example.com
+tetocloudofficial@gmail.com
+RobertMaite638@gmail.com
+mewdream@qq.com
+1021846662@qq.com
+bajete9971@outlook.com
+victorhuangweite@gmail.com
+79826237@qq.com
+850374428@qq.com
+483664943@qq.com
+524849574@qq.com
+3366456627@qq.com

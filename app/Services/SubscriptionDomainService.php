@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\IpUtils;
 
 /**
  * 订阅域名伪装服务。
@@ -23,9 +24,9 @@ class SubscriptionDomainService
      * @param array<int, array<string, mixed>> $servers
      * @return array<int, array<string, mixed>>
      */
-    public function maskServersForUser(User $user, array $servers): array
+    public function maskServersForUser(User $user, Request $request, array $servers): array
     {
-        if (!$this->shouldUseFakeDomain($user)) {
+        if ($this->getMaskReason($user, $request) === null) {
             return $servers;
         }
 
@@ -34,11 +35,11 @@ class SubscriptionDomainService
 
     /**
      * 订阅内容成功生成后，记录命中用户并异步通知 Telegram 频道。
-     * 这里会再次确认用户仍命中规则，避免没有替换域名的请求被误记录。
      */
     public function notifySuccessfulMaskedSubscription(User $user, Request $request, string $source): void
     {
-        if (!$this->shouldUseFakeDomain($user)) {
+        $match = $this->getMaskReason($user, $request);
+        if ($match === null) {
             return;
         }
 
@@ -51,6 +52,8 @@ class SubscriptionDomainService
             'fake_domain' => $this->getFakeDomain(),
             'low_traffic_days' => $this->getLowTrafficDays(),
             'low_traffic_limit' => $this->getLowTrafficLimit(),
+            'reason' => $match['reason'],
+            'matched_value' => $match['value'],
         ];
 
         // 每一次成功返回都会写日志，方便在 storage/logs 中完整追溯。
@@ -67,19 +70,42 @@ class SubscriptionDomainService
             return;
         }
 
-        SendTelegramJob::dispatch($chatId, $this->buildTelegramMessage($user, $request, $source));
+        SendTelegramJob::dispatch($chatId, $this->buildTelegramMessage($user, $request, $source, $match));
+    }
+
+    /**
+     * 判断是否应对该用户返回假域名。
+     * 邮箱名单优先，其次 IP 段，最后才检查低流量规则。
+     *
+     * @return array{reason: string, value: string}|null
+     */
+    private function getMaskReason(User $user, Request $request): ?array
+    {
+        if ($this->getFakeDomain() === '') {
+            return null;
+        }
+
+        if ($email = $this->matchSuspiciousEmail($user->email)) {
+            return ['reason' => '邮箱名单', 'value' => $email];
+        }
+
+        if ($ipRange = $this->matchSuspiciousIpRange($request->ip())) {
+            return ['reason' => 'IP 段', 'value' => $ipRange];
+        }
+
+        if ($this->hasLowTraffic($user)) {
+            return ['reason' => '低流量', 'value' => '最近 ' . $this->getLowTrafficDays() . ' 天'];
+        }
+
+        return null;
     }
 
     /**
      * 判断用户最近指定天数内是否每天都没有达到指定流量阈值。
      * 某一天没有流量记录时，按当天使用 0 字节处理。
      */
-    private function shouldUseFakeDomain(User $user): bool
+    private function hasLowTraffic(User $user): bool
     {
-        if ($this->getFakeDomain() === '') {
-            return false;
-        }
-
         $days = $this->getLowTrafficDays();
         $limit = $this->getLowTrafficLimit();
         $startAt = now()->startOfDay()->subDays($days - 1)->timestamp;
@@ -99,6 +125,56 @@ class SubscriptionDomainService
         }
 
         return true;
+    }
+
+    /**
+     * 在离线 IP/CIDR 名单中查找请求 IP，支持 IPv4、IPv6、单个 IP 和 CIDR。
+     */
+    private function matchSuspiciousIpRange(string $ip): ?string
+    {
+        if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+            return null;
+        }
+
+        foreach ($this->readOfflineList('SUSPICIOUS_IP_RANGES_FILE', 'storage/app/suspicious-ip-ranges.txt') as $range) {
+            if (IpUtils::checkIp($ip, $range)) {
+                return $range;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * 在离线邮箱名单中按完整邮箱精确匹配，邮箱大小写不敏感。
+     */
+    private function matchSuspiciousEmail(string $email): ?string
+    {
+        $email = strtolower(trim($email));
+        foreach ($this->readOfflineList('SUSPICIOUS_EMAILS_FILE', 'storage/app/suspicious-emails.txt') as $suspiciousEmail) {
+            if ($email === strtolower($suspiciousEmail)) {
+                return $suspiciousEmail;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * 读取离线名单文件：忽略空行和以 # 开头的注释行。
+     * 文件路径由 .env 配置，相对路径相对于项目根目录。
+     *
+     * @return array<int, string>
+     */
+    private function readOfflineList(string $environmentKey, string $defaultPath): array
+    {
+        $path = base_path(trim((string) env($environmentKey, $defaultPath)) ?: $defaultPath);
+        if (!is_file($path) || !is_readable($path)) {
+            return [];
+        }
+
+        $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+        return array_values(array_filter(array_map('trim', $lines), fn(string $line): bool => $line !== '' && !str_starts_with($line, '#')));
     }
 
     /**
@@ -138,7 +214,7 @@ class SubscriptionDomainService
     /**
      * 生成频道告警内容；不包含订阅 token、订阅链接和真实节点域名。
      */
-    private function buildTelegramMessage(User $user, Request $request, string $source): string
+    private function buildTelegramMessage(User $user, Request $request, string $source, array $match): string
     {
         return implode("\n", [
             '异常用户',
@@ -146,6 +222,8 @@ class SubscriptionDomainService
             '用户 ID: ' . $user->id,
             '邮箱: ' . $user->email,
             '请求 IP: ' . $request->ip(),
+            '命中原因: ' . $match['reason'],
+            '命中内容: ' . $match['value'],
             '订阅入口: ' . $source,
             '客户端: ' . ($request->userAgent() ?: '未知'),
             '时间: ' . now()->format('Y-m-d H:i:s'),
