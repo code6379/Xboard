@@ -6,9 +6,9 @@ XBOARD_BRANCH="master"
 COMPOSE_FILE="compose.custom.yaml"
 
 if docker compose version >/dev/null 2>&1; then
-    compose() { docker compose -f "$COMPOSE_FILE" "$@"; }
+    compose() { docker compose -f compose.yaml "$@"; }
 elif command -v docker-compose >/dev/null 2>&1; then
-    compose() { docker-compose -f "$COMPOSE_FILE" "$@"; }
+    compose() { docker-compose -f compose.yaml "$@"; }
 else
     echo "Docker Compose is not installed." >&2
     exit 1
@@ -25,7 +25,7 @@ else
 fi
 
 echo "Using Compose template: www/$COMPOSE_FILE"
-cp "www/$COMPOSE_FILE" "$COMPOSE_FILE"
+cp "www/$COMPOSE_FILE" compose.yaml
 
 mkdir -p data/redis data/database data/logs data/theme data/plugins
 
