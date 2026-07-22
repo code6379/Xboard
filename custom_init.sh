@@ -34,7 +34,7 @@ prepare_compose_file() {
 }
 
 prepare_data_directories() {
-    mkdir -p data/redis data/database data/logs data/theme data/plugins
+    mkdir -p data/redis data/database data/logs data/theme data/plugins data/tinyrdm
 }
 
 install_dependencies() {
