@@ -22,8 +22,8 @@ services:
     ports:
       - "18086:8086"
     environment:
-      - ADMIN_USERNAME=admin
-      - ADMIN_PASSWORD=zxc123456
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-123456}
     volumes:
       - ./data/tinyrdm:/app/tinyrdm
       - ./data/redis:/data/redis:ro
