@@ -74,7 +74,8 @@ class ClientController extends Controller
         );
 
         // 低流量用户只在订阅输出时替换域名，真实节点配置不会被修改。
-        $serversFiltered = app(SubscriptionDomainService::class)->maskServersForUser($user, $serversFiltered);
+        $subscriptionDomainService = app(SubscriptionDomainService::class);
+        $serversFiltered = $subscriptionDomainService->maskServersForUser($user, $serversFiltered);
 
         $this->setSubscribeInfoToServers($serversFiltered, $user, count($servers) - count($serversFiltered));
         $serversFiltered = $this->addPrefixToServerName($serversFiltered);
@@ -88,7 +89,12 @@ class ClientController extends Controller
             'userAgent' => $clientInfo['flag'] ?? null
         ]);
 
-        return $protocolInstance->handle();
+        $response = $protocolInstance->handle();
+
+        // 仅在订阅内容成功生成后记录并推送告警，避免生成失败时误报。
+        $subscriptionDomainService->notifySuccessfulMaskedSubscription($user, $request, '普通订阅');
+
+        return $response;
     }
 
     /**

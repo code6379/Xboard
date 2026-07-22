@@ -2,8 +2,12 @@
 
 namespace App\Services;
 
+use App\Jobs\SendTelegramJob;
 use App\Models\StatUser;
 use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 /**
  * 订阅域名伪装服务。
@@ -26,6 +30,44 @@ class SubscriptionDomainService
         }
 
         return $this->replaceServerDomains($servers);
+    }
+
+    /**
+     * 订阅内容成功生成后，记录命中用户并异步通知 Telegram 频道。
+     * 这里会再次确认用户仍命中规则，避免没有替换域名的请求被误记录。
+     */
+    public function notifySuccessfulMaskedSubscription(User $user, Request $request, string $source): void
+    {
+        if (!$this->shouldUseFakeDomain($user)) {
+            return;
+        }
+
+        $context = [
+            'user_id' => $user->id,
+            'email' => $user->email,
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'source' => $source,
+            'fake_domain' => $this->getFakeDomain(),
+            'low_traffic_days' => $this->getLowTrafficDays(),
+            'low_traffic_limit' => $this->getLowTrafficLimit(),
+        ];
+
+        // 每一次成功返回都会写日志，方便在 storage/logs 中完整追溯。
+        Log::info('低流量用户订阅已返回假域名', $context);
+
+        $chatId = (int) env('TELEGRAM_ALERT_CHAT_ID', 0);
+        if ($chatId === 0) {
+            return;
+        }
+
+        // 客户端会自动刷新订阅；同一用户在间隔期内只推送一次，避免频道刷屏。
+        $cacheKey = 'low_traffic_subscription_alert_' . $user->id;
+        if (!Cache::add($cacheKey, true, $this->getAlertInterval())) {
+            return;
+        }
+
+        SendTelegramJob::dispatch($chatId, $this->buildTelegramMessage($user, $request, $source));
     }
 
     /**
@@ -83,6 +125,33 @@ class SubscriptionDomainService
     private function getLowTrafficLimit(): int
     {
         return max(0, (int) env('LOW_TRAFFIC_LIMIT', 5242880));
+    }
+
+    /**
+     * 从 .env 的 LOW_TRAFFIC_ALERT_INTERVAL 读取同一用户的告警间隔，默认 24 小时。
+     */
+    private function getAlertInterval(): int
+    {
+        return max(60, (int) env('LOW_TRAFFIC_ALERT_INTERVAL', 86400));
+    }
+
+    /**
+     * 生成频道告警内容；不包含订阅 token、订阅链接和真实节点域名。
+     */
+    private function buildTelegramMessage(User $user, Request $request, string $source): string
+    {
+        return implode("\n", [
+            '低流量订阅命中',
+            '',
+            '用户 ID: ' . $user->id,
+            '邮箱: ' . $user->email,
+            '请求 IP: ' . $request->ip(),
+            '订阅入口: ' . $source,
+            '客户端: ' . ($request->userAgent() ?: '未知'),
+            '规则: 最近 ' . $this->getLowTrafficDays() . ' 天每天低于 ' . $this->getLowTrafficLimit() . ' 字节',
+            '处理: 已返回假域名',
+            '时间: ' . now()->format('Y-m-d H:i:s'),
+        ]);
     }
 
     /**
