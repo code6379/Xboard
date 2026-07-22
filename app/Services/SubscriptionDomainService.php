@@ -148,10 +148,19 @@ class SubscriptionDomainService
             '请求 IP: ' . $request->ip(),
             '订阅入口: ' . $source,
             '客户端: ' . ($request->userAgent() ?: '未知'),
-            '规则: 最近 ' . $this->getLowTrafficDays() . ' 天每天低于 ' . $this->getLowTrafficLimit() . ' 字节',
+            '规则: 最近 ' . $this->getLowTrafficDays() . ' 天每天低于 ' . $this->formatTrafficLimit(),
             '处理: 已返回假域名',
             '时间: ' . now()->format('Y-m-d H:i:s'),
         ]);
+    }
+
+    /**
+     * 将 .env 中以字节保存的流量阈值转换为便于阅读的 MiB 文本。
+     */
+    private function formatTrafficLimit(): string
+    {
+        $mebibytes = $this->getLowTrafficLimit() / 1048576;
+        return rtrim(rtrim(number_format($mebibytes, 2, '.', ''), '0'), '.') . ' MiB';
     }
 
     /**
