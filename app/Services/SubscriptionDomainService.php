@@ -43,6 +43,12 @@ class SubscriptionDomainService
             return;
         }
 
+        // 连续低流量确认后，将邮箱和本次访问 IP 固化进离线黑名单。
+        // 后续请求会优先命中名单，不再依赖每日流量统计结果。
+        if ($match['reason'] === '低流量') {
+            $this->addLowTrafficUserToBlacklist($user, $request->ip());
+        }
+
         $context = [
             'user_id' => $user->id,
             'email' => $user->email,
@@ -59,14 +65,15 @@ class SubscriptionDomainService
         // 每一次成功返回都会写日志，方便在 storage/logs 中完整追溯。
         Log::info('低流量用户订阅已返回假域名', $context);
 
-        $chatId = (int) env('TELEGRAM_ALERT_CHAT_ID', 0);
-        if ($chatId === 0) {
+        $chatId = $this->getTelegramAlertChatId();
+        if ($chatId === null) {
             return;
         }
 
         // 客户端会自动刷新订阅；同一用户在间隔期内只推送一次，避免频道刷屏。
         $cacheKey = 'low_traffic_subscription_alert_' . $user->id;
-        if (!Cache::add($cacheKey, true, $this->getAlertInterval())) {
+        $alertInterval = $this->getAlertInterval();
+        if ($alertInterval === null || !Cache::add($cacheKey, true, $alertInterval)) {
             return;
         }
 
@@ -75,13 +82,18 @@ class SubscriptionDomainService
 
     /**
      * 判断是否应对该用户返回假域名。
-     * 邮箱名单优先，其次 IP 段，最后才检查低流量规则。
+     * 白名单优先，其次邮箱名单、IP 段，最后才检查低流量规则。
      *
      * @return array{reason: string, value: string}|null
      */
     private function getMaskReason(User $user, Request $request): ?array
     {
         if ($this->getFakeDomain() === '') {
+            return null;
+        }
+
+        // 白名单用户永不替换域名，即使同时命中其他异常规则。
+        if ($this->matchWhitelistEmail($user->email)) {
             return null;
         }
 
@@ -102,12 +114,16 @@ class SubscriptionDomainService
 
     /**
      * 判断用户最近指定天数内是否每天都没有达到指定流量阈值。
-     * 某一天没有流量记录时，按当天使用 0 字节处理。
+     * 必须每一天都有日流量统计记录；中间缺少任何一天时不判定为低流量。
      */
     private function hasLowTraffic(User $user): bool
     {
         $days = $this->getLowTrafficDays();
         $limit = $this->getLowTrafficLimit();
+        if ($days === null || $limit === null) {
+            return false;
+        }
+
         $startAt = now()->startOfDay()->subDays($days - 1)->timestamp;
         $dailyTraffic = StatUser::query()
             ->selectRaw('record_at, SUM(u + d) AS traffic')
@@ -115,11 +131,18 @@ class SubscriptionDomainService
             ->where('record_type', 'd')
             ->where('record_at', '>=', $startAt)
             ->groupBy('record_at')
-            ->pluck('traffic', 'record_at');
+            ->pluck('traffic', 'record_at')
+            ->toArray();
 
         for ($day = 0; $day < $days; $day++) {
             $recordAt = $startAt + ($day * 86400);
-            if ((int) ($dailyTraffic[$recordAt] ?? 0) >= $limit) {
+
+            // 用户没有在这一天产生统计记录时，不把它当成 0 流量，避免误判正常用户。
+            if (!array_key_exists($recordAt, $dailyTraffic)) {
+                return false;
+            }
+
+            if ((int) $dailyTraffic[$recordAt] >= $limit) {
                 return false;
             }
         }
@@ -136,7 +159,7 @@ class SubscriptionDomainService
             return null;
         }
 
-        foreach ($this->readOfflineList('SUSPICIOUS_IP_RANGES_FILE', 'storage/app/suspicious-ip-ranges.txt') as $range) {
+        foreach ($this->readOfflineList('SUBSCRIPTION_BLACKLIST_IP_RANGES_FILE') as $range) {
             if (IpUtils::checkIp($ip, $range)) {
                 return $range;
             }
@@ -151,7 +174,7 @@ class SubscriptionDomainService
     private function matchSuspiciousEmail(string $email): ?string
     {
         $email = strtolower(trim($email));
-        foreach ($this->readOfflineList('SUSPICIOUS_EMAILS_FILE', 'storage/app/suspicious-emails.txt') as $suspiciousEmail) {
+        foreach ($this->readOfflineList('SUBSCRIPTION_BLACKLIST_EMAILS_FILE') as $suspiciousEmail) {
             if ($email === strtolower($suspiciousEmail)) {
                 return $suspiciousEmail;
             }
@@ -161,15 +184,43 @@ class SubscriptionDomainService
     }
 
     /**
+     * 在离线白名单中按完整邮箱精确匹配，邮箱大小写不敏感。
+     */
+    private function matchWhitelistEmail(string $email): ?string
+    {
+        $email = strtolower(trim($email));
+        foreach ($this->readOfflineList('SUBSCRIPTION_WHITELIST_EMAILS_FILE') as $whitelistEmail) {
+            if ($email === strtolower($whitelistEmail)) {
+                return $whitelistEmail;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * 将连续低流量用户的邮箱和当前访问 IP 追加到对应黑名单文件。
+     * 已存在的内容不会重复写入；文件锁避免多个订阅请求同时写入时发生冲突。
+     */
+    private function addLowTrafficUserToBlacklist(User $user, string $ip): void
+    {
+        $this->appendOfflineListValue('SUBSCRIPTION_BLACKLIST_EMAILS_FILE', strtolower(trim($user->email)));
+
+        if (filter_var($ip, FILTER_VALIDATE_IP)) {
+            $this->appendOfflineListValue('SUBSCRIPTION_BLACKLIST_IP_RANGES_FILE', $ip);
+        }
+    }
+
+    /**
      * 读取离线名单文件：忽略空行和以 # 开头的注释行。
      * 文件路径由 .env 配置，相对路径相对于项目根目录。
      *
      * @return array<int, string>
      */
-    private function readOfflineList(string $environmentKey, string $defaultPath): array
+    private function readOfflineList(string $environmentKey): array
     {
-        $path = base_path(trim((string) env($environmentKey, $defaultPath)) ?: $defaultPath);
-        if (!is_file($path) || !is_readable($path)) {
+        $path = $this->getOfflineListPath($environmentKey);
+        if ($path === null || !is_file($path) || !is_readable($path)) {
             return [];
         }
 
@@ -178,37 +229,105 @@ class SubscriptionDomainService
     }
 
     /**
+     * 将一条内容追加到离线名单文件，并避免重复写入。
+     */
+    private function appendOfflineListValue(string $environmentKey, string $value): void
+    {
+        if ($value === '') {
+            return;
+        }
+
+        $path = $this->getOfflineListPath($environmentKey);
+        if ($path === null) {
+            Log::warning('订阅黑名单文件路径未配置', ['environment_key' => $environmentKey]);
+            return;
+        }
+
+        $directory = dirname($path);
+        if (!is_dir($directory) && !mkdir($directory, 0755, true) && !is_dir($directory)) {
+            Log::warning('无法创建订阅黑名单目录', ['directory' => $directory]);
+            return;
+        }
+
+        $file = fopen($path, 'c+');
+        if ($file === false) {
+            Log::warning('无法写入订阅黑名单文件', ['path' => $path]);
+            return;
+        }
+
+        try {
+            if (!flock($file, LOCK_EX)) {
+                return;
+            }
+
+            $content = stream_get_contents($file) ?: '';
+            $values = array_map('strtolower', array_map('trim', preg_split('/\R/', $content)));
+            if (in_array(strtolower($value), $values, true)) {
+                return;
+            }
+
+            fseek($file, 0, SEEK_END);
+            fwrite($file, (strlen($content) > 0 && !str_ends_with($content, "\n") ? "\n" : '') . $value . "\n");
+        } finally {
+            flock($file, LOCK_UN);
+            fclose($file);
+        }
+    }
+
+    /**
+     * 获取 .env 配置的离线名单绝对路径；未配置时返回 null。
+     */
+    private function getOfflineListPath(string $environmentKey): ?string
+    {
+        $path = trim((string) env($environmentKey));
+        return $path === '' ? null : base_path($path);
+    }
+
+    /**
      * 从 .env 的 FAKE_DOMAIN 读取固定假域名。
      * 留空表示暂不启用该功能，所有用户都会收到真实节点域名。
      */
     private function getFakeDomain(): string
     {
-        return trim((string) env('FAKE_DOMAIN', ''));
+        return trim((string) env('FAKE_DOMAIN'));
     }
 
     /**
-     * 从 .env 的 LOW_TRAFFIC_DAYS 读取统计天数，默认最近 7 个自然日。
+     * 从 .env 的 LOW_TRAFFIC_DAYS 读取统计天数；缺失或无效时不启用低流量规则。
      */
-    private function getLowTrafficDays(): int
+    private function getLowTrafficDays(): ?int
     {
-        return max(1, (int) env('LOW_TRAFFIC_DAYS', 7));
+        $days = filter_var(env('LOW_TRAFFIC_DAYS'), FILTER_VALIDATE_INT);
+        return $days !== false && $days > 0 ? $days : null;
     }
 
     /**
      * 从 .env 的 LOW_TRAFFIC_LIMIT 读取每日流量阈值，单位为字节。
-     * 默认值 5242880 即 5 MiB（5 * 1024 * 1024）。
+     * 缺失或无效时不启用低流量规则。
      */
-    private function getLowTrafficLimit(): int
+    private function getLowTrafficLimit(): ?int
     {
-        return max(0, (int) env('LOW_TRAFFIC_LIMIT', 5242880));
+        $limit = filter_var(env('LOW_TRAFFIC_LIMIT'), FILTER_VALIDATE_INT);
+        return $limit !== false && $limit > 0 ? $limit : null;
     }
 
     /**
-     * 从 .env 的 LOW_TRAFFIC_ALERT_INTERVAL 读取同一用户的告警间隔，默认 24 小时。
+     * 从 .env 的 LOW_TRAFFIC_ALERT_INTERVAL 读取同一用户的告警间隔。
+     * 缺失或无效时不发送 Telegram 告警。
      */
-    private function getAlertInterval(): int
+    private function getAlertInterval(): ?int
     {
-        return max(60, (int) env('LOW_TRAFFIC_ALERT_INTERVAL', 86400));
+        $interval = filter_var(env('LOW_TRAFFIC_ALERT_INTERVAL'), FILTER_VALIDATE_INT);
+        return $interval !== false && $interval >= 60 ? $interval : null;
+    }
+
+    /**
+     * 从 .env 读取 Telegram 频道或群组 ID；缺失或无效时不发送告警。
+     */
+    private function getTelegramAlertChatId(): ?int
+    {
+        $chatId = filter_var(env('TELEGRAM_ALERT_CHAT_ID'), FILTER_VALIDATE_INT);
+        return $chatId !== false && $chatId !== 0 ? $chatId : null;
     }
 
     /**
