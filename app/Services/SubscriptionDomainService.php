@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use Throwable;
+use Ip2Region;
 use App\Jobs\SendTelegramJob;
 use App\Models\StatUser;
 use App\Models\User;
@@ -82,7 +84,7 @@ class SubscriptionDomainService
 
     /**
      * 判断是否应对该用户返回假域名。
-     * 白名单优先，其次邮箱名单、IP 段，最后才检查低流量规则。
+     * 先检查中国大陆 IP 和 IP 白名单，随后检查邮箱白名单、黑名单和低流量规则。
      *
      * @return array{reason: string, value: string}|null
      */
@@ -90,6 +92,15 @@ class SubscriptionDomainService
     {
         if ($this->getFakeDomain() === '') {
             return null;
+        }
+
+        // IP 白名单是最前置的闸门，不允许邮箱白名单绕过。
+        if (!$this->isMainlandIpv4($request->ip())) {
+            return ['reason' => '非中国大陆 IP', 'value' => $this->getIpCountry($request->ip())];
+        }
+
+        if (!$this->isAllowlistedIp($request->ip())) {
+            return ['reason' => 'IP 未在白名单', 'value' => $request->ip()];
         }
 
         // 白名单用户永不替换域名，即使同时命中其他异常规则。
@@ -148,6 +159,59 @@ class SubscriptionDomainService
         }
 
         return true;
+    }
+
+    /**
+     * 在中国大陆 IP 检查通过后，按完整 IPv4 地址精确匹配允许集合。
+     */
+    private function isAllowlistedIp(string $ip): bool
+    {
+        if (in_array($ip, $this->readOfflineList('SUBSCRIPTION_ALLOWLIST_IPS_FILE'), true)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * ip2region 的首个字段为国家；排除港澳台后才视为中国大陆 IP。
+     */
+    private function isMainlandIpv4(string $ip): bool
+    {
+        $region = $this->getIpRegion($ip);
+        return $region !== null
+            && str_starts_with($region, '中国|')
+            && !str_contains($region, '香港')
+            && !str_contains($region, '澳门')
+            && !str_contains($region, '台湾');
+    }
+
+    /**
+     * 返回 IP 归属地中的国家字段，供非大陆 IP 的告警和日志展示。
+     */
+    private function getIpCountry(string $ip): string
+    {
+        $region = $this->getIpRegion($ip);
+        return $region === null ? '未知' : (explode('|', $region)[0] ?: '未知');
+    }
+
+    /**
+     * ip2region 归属地格式为：国家|区域|省份|城市|运营商。
+     */
+    private function getIpRegion(string $ip): ?string
+    {
+        if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+            return null;
+        }
+
+        try {
+            $result = (new Ip2Region())->memorySearch($ip);
+            $region = (string) ($result['region'] ?? '');
+            return $region === '' ? null : $region;
+        } catch (Throwable $exception) {
+            Log::warning('订阅 IP 归属地查询失败', ['ip' => $ip, 'exception' => $exception->getMessage()]);
+            return null;
+        }
     }
 
     /**
@@ -217,7 +281,7 @@ class SubscriptionDomainService
      *
      * @return array<int, string>
      */
-    private function readOfflineList(string $environmentKey): array
+    public function readOfflineList(string $environmentKey): array
     {
         $path = $this->getOfflineListPath($environmentKey);
         if ($path === null || !is_file($path) || !is_readable($path)) {
