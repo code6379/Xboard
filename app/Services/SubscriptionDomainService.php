@@ -84,7 +84,7 @@ class SubscriptionDomainService
 
     /**
      * 判断是否应对该用户返回假域名。
-     * 先检查中国大陆 IP 和 IP 白名单，随后检查邮箱白名单、黑名单和低流量规则。
+     * 中国大陆 IP 或命中 IP 白名单时，才继续邮箱白名单、黑名单和低流量规则。
      *
      * @return array{reason: string, value: string}|null
      */
@@ -94,13 +94,9 @@ class SubscriptionDomainService
             return null;
         }
 
-        // IP 白名单是最前置的闸门，不允许邮箱白名单绕过。
-        if (!$this->isMainlandIpv4($request->ip())) {
-            return ['reason' => '非中国大陆 IP', 'value' => $this->getIpCountry($request->ip())];
-        }
-
-        if (!$this->isAllowlistedIp($request->ip())) {
-            return ['reason' => 'IP 未在白名单', 'value' => $request->ip()];
+        // 中国大陆 IP 可直接继续；非大陆 IP 必须在完整 IP 白名单中。
+        if (!$this->isMainlandIpv4($request->ip()) && !$this->isAllowlistedIp($request->ip())) {
+            return ['reason' => '非大陆IP', 'value' => $this->getIpCountry($request->ip())];
         }
 
         // 白名单用户永不替换域名，即使同时命中其他异常规则。
@@ -113,7 +109,7 @@ class SubscriptionDomainService
         }
 
         if ($ipRange = $this->matchSuspiciousIpRange($request->ip())) {
-            return ['reason' => 'IP 段', 'value' => $ipRange];
+            return ['reason' => 'IP段', 'value' => $ipRange];
         }
 
         if ($this->hasLowTraffic($user)) {
@@ -162,7 +158,7 @@ class SubscriptionDomainService
     }
 
     /**
-     * 在中国大陆 IP 检查通过后，按完整 IPv4 地址精确匹配允许集合。
+     * 按完整 IPv4 地址精确匹配允许集合，用于放行非大陆 IP。
      */
     private function isAllowlistedIp(string $ip): bool
     {
