@@ -166,7 +166,12 @@ class SubscriptionDomainService
      */
     private function isAllowlistedIp(string $ip): bool
     {
-        if (in_array($ip, $this->readOfflineList('SUBSCRIPTION_ALLOWLIST_IPS_FILE'), true)) {
+        $offlineList = $this->readOfflineList('SUBSCRIPTION_ALLOWLIST_IPS_FILE');
+        if (empty($offlineList)) {
+            return true;
+        }
+
+        if (in_array($ip, $offlineList, true)) {
             return true;
         }
 
