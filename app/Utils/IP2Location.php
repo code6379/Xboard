@@ -173,21 +173,21 @@ class IP2Location
         );
     }
 
-    /**
-     * 提取安全排查最关心的关键信息(用于识别代理/VPN/IDC/爬虫等异常访问)
-     *
-     * @param array $raw lookup() 返回的原始数据
-     */
     public function formatImportant(array $raw): array
     {
-        $proxy = $raw['proxy'] ?? [];
+        $proxy     = $raw['proxy'] ?? [];
+        $country   = $raw['country'] ?? [];
+        $region    = $raw['region'] ?? [];
+        $city      = $raw['city'] ?? [];
+        $continent = $raw['continent'] ?? [];
 
         return [
-            // 基础信息
+            // 基础信息(优先取中文翻译,取不到再降级用英文)
             'ip'           => $raw['ip'] ?? null,
-            'country'      => $raw['country_name'] ?? null,
-            'region'       => $raw['region_name'] ?? null,
-            'city'         => $raw['city_name'] ?? null,
+            'continent'    => $this->zhOrFallback($continent, $raw['continent']['name'] ?? null),
+            'country'      => $this->zhOrFallback($country, $raw['country_name'] ?? null),
+            'region'       => $this->zhOrFallback($region, $raw['region_name'] ?? null),
+            'city'         => $this->zhOrFallback($city, $raw['city_name'] ?? null),
             'time_zone'    => $raw['time_zone'] ?? null,
 
             // 归属/线路信息
@@ -195,20 +195,33 @@ class IP2Location
             'as_name'      => $raw['as'] ?? null,
             'asn'          => $raw['asn'] ?? null,
             'domain'       => $raw['domain'] ?? null,
-            'usage_type'   => $raw['usage_type'] ?? null,      // 如 CDN、IDC、ISP、EDU 等
+            'usage_type'   => $raw['usage_type'] ?? null,
             'net_speed'    => $raw['net_speed'] ?? null,
 
             // 风险核心指标
             'is_proxy'     => $raw['is_proxy'] ?? null,
-            'fraud_score'  => $raw['fraud_score'] ?? null,      // 0-100,越高越可疑
-            'proxy_type'   => $proxy['proxy_type'] ?? null,     // VPN / TOR / DCH(数据中心)等
+            'fraud_score'  => $raw['fraud_score'] ?? null,
+            'proxy_type'   => $proxy['proxy_type'] ?? null,
             'threat'       => $proxy['threat'] ?? null,
             'provider'     => $proxy['provider'] ?? null,
-            'last_seen'    => $proxy['last_seen'] ?? null,      // 距上次被标记的天数
+            'last_seen'    => $proxy['last_seen'] ?? null,
 
-            // 风险类型细分(只保留 true 的项,方便一眼看出问题)
             'risk_flags'   => $this->extractTrueFlags($proxy),
         ];
+    }
+
+    /**
+     * 从带 translation 的字段结构中取中文值,取不到则降级用英文原值
+     *
+     * 结构示例:
+     * [
+     *   "name" => "Singapore",
+     *   "translation" => ["lang" => "zh-cn", "value" => "新加坡"]
+     * ]
+     */
+    protected function zhOrFallback(array $field, ?string $fallback): ?string
+    {
+        return $field['translation']['value'] ?? $fallback;
     }
 
     /**
