@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\User;
 use App\Utils\Helper;
 use Closure;
+use App\Utils\IP2Location;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -24,10 +25,12 @@ class GlobalRequestLog
 
         try {
             $user = $this->resolveUser($request);
+            $ip2locationService = app(IP2Location::class);
+            $ipInfo = $ip2locationService->lookupCached($request->ip());
+
             Log::channel('request')->info('request', [
                 'time'              => now()->toDateTimeString(),
-                'ip'                => $request->ip(),
-                'ip_info'           => (new \Ip2Region())->search($request->ip()),
+                'ip_info'           => $ipInfo,
                 'method'            => $request->method(),
                 'uri'               => $request->getRequestUri(),
                 'status'            => method_exists($response, 'getStatusCode') ? $response->getStatusCode() : 200,
