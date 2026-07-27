@@ -27,6 +27,7 @@ class GlobalRequestLog
             Log::channel('request')->info('request', [
                 'time'              => now()->toDateTimeString(),
                 'ip'                => $request->ip(),
+                'ip_info'           => (new \Ip2Region())->search($request->ip()),
                 'method'            => $request->method(),
                 'uri'               => $request->getRequestUri(),
                 'status'            => method_exists($response, 'getStatusCode') ? $response->getStatusCode() : 200,
