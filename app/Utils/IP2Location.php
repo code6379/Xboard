@@ -100,20 +100,6 @@ class IP2Location
     }
 
     /**
-     * 随机取一个 key 查询(不轮询,不失败切换)
-     */
-    public function lookupRandom(string $ip): array
-    {
-        if (empty($this->keys)) {
-            throw new RuntimeException('IP2Location 未配置任何 API key');
-        }
-
-        $randomKey = $this->keys[array_rand($this->keys)];
-
-        return $this->request($ip, $randomKey);
-    }
-
-    /**
      * 实际发起请求
      */
     protected function request(string $ip, string $apiKey): array
