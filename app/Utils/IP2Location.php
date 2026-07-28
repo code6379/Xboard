@@ -188,7 +188,6 @@ class IP2Location
             'country'      => $this->zhOrFallback($country, $raw['country_name'] ?? null),
             'region'       => $this->zhOrFallback($region, $raw['region_name'] ?? null),
             'city'         => $this->zhOrFallback($city, $raw['city_name'] ?? null),
-            'time_zone'    => $raw['time_zone'] ?? null,
 
             // 归属/线路信息
             'isp'          => $raw['isp'] ?? null,
