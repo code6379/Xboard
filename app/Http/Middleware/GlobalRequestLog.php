@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use Throwable;
 use App\Models\User;
 use App\Utils\Helper;
 use Closure;
@@ -41,7 +42,7 @@ class GlobalRequestLog
                 'params'            => $this->clean($request->all()),
                 'user-agent'        => $request->header('User-Agent'),
             ]);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             Log::warning('Global request log failed: ' . $e->getMessage());
         }
 
