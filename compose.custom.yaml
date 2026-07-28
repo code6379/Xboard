@@ -10,6 +10,7 @@ services:
       - ./data/database:/www/.docker/.data
       - ./data/logs:/www/storage/logs
       - ./data/theme:/www/storage/theme
+      - ./data/sub_rules:/www/storage/sub_rules
       - ./data/plugins:/www/plugins
     environment:
       - RESOURCE_PROFILE=balanced
