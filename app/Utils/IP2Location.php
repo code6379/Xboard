@@ -84,22 +84,6 @@ class IP2Location
     }
 
     /**
-     * 安全查询,失败返回 null
-     */
-    public function lookupSafe(string $ip, ?string $key = null): ?array
-    {
-        try {
-            return $this->lookup($ip, $key);
-        } catch (Throwable $e) {
-            Log::error('IP2Location lookupSafe 失败', [
-                'ip'      => $ip,
-                'message' => $e->getMessage(),
-            ]);
-            return null;
-        }
-    }
-
-    /**
      * 实际发起请求
      */
     protected function request(string $ip, string $apiKey): array
@@ -172,6 +156,7 @@ class IP2Location
             'ip'           => $raw['ip'] ?? null,
             'continent'    => $this->zhOrFallback($continent, $raw['continent']['name'] ?? null),
             'country'      => $this->zhOrFallback($country, $raw['country_name'] ?? null),
+            'country_code' => $raw['country_code'] ?? null,
             'region'       => $this->zhOrFallback($region, $raw['region_name'] ?? null),
             'city'         => $this->zhOrFallback($city, $raw['city_name'] ?? null),
 
@@ -248,15 +233,14 @@ class IP2Location
      * @param string $ip
      * @param int    $ttlMinutes 缓存时长(分钟),默认缓存1天,同一个IP不用重复查API
      *
-     * @return array|null
+     * @return array
      */
-    public function lookupCached(string $ip, int $ttlMinutes = 24): ?array
+    public function lookupCached(string $ip, int $ttlMinutes = 24): array
     {
         $cacheKey = 'ip2location:info:' . $ip;
 
         return Cache::remember($cacheKey, now()->addHours($ttlMinutes), function () use ($ip) {
-            $raw = $this->lookupSafe($ip);
-            return $raw ? $this->formatImportant($raw) : null;
+            return $this->formatImportant($this->lookup($ip));
         });
     }
 }

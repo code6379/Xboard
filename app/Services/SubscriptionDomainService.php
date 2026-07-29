@@ -2,11 +2,10 @@
 
 namespace App\Services;
 
-use Throwable;
-use Ip2Region;
 use App\Jobs\SendTelegramJob;
 use App\Models\StatUser;
 use App\Models\User;
+use App\Utils\IP2Location;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -94,9 +93,15 @@ class SubscriptionDomainService
             return null;
         }
 
+        $ip = $request->ip();
+        $ipInfo = app(IP2Location::class)->lookupCached($ip);
+
         // 中国大陆 IP 可直接继续；非大陆 IP 必须在完整 IP 白名单中。
-        if (!$this->isMainlandIpv4($request->ip()) && !$this->isAllowlistedIp($request->ip())) {
-            return ['reason' => '非大陆IP', 'value' => $this->getIpCountry($request->ip())];
+        if ($ipInfo['country_code'] !== 'CN' && !$this->isAllowlistedIp($ip)) {
+            return [
+                'reason' => '非大陆IP',
+                'value' => $ipInfo['country'] . $ipInfo['region'] . $ipInfo['city'],
+            ];
         }
 
         // 白名单用户永不替换域名，即使同时命中其他异常规则。
@@ -172,47 +177,6 @@ class SubscriptionDomainService
         }
 
         return false;
-    }
-
-    /**
-     * ip2region 的首个字段为国家；排除港澳台后才视为中国大陆 IP。
-     */
-    private function isMainlandIpv4(string $ip): bool
-    {
-        $region = $this->getIpRegion($ip);
-        return $region !== null
-            && str_starts_with($region, '中国|')
-            && !str_contains($region, '香港')
-            && !str_contains($region, '澳门')
-            && !str_contains($region, '台湾');
-    }
-
-    /**
-     * 返回 IP 归属地中的国家字段，供非大陆 IP 的告警和日志展示。
-     */
-    private function getIpCountry(string $ip): string
-    {
-        $region = $this->getIpRegion($ip);
-        return $region === null ? '未知' : (explode('|', $region)[0] ?: '未知');
-    }
-
-    /**
-     * ip2region 归属地格式为：国家|区域|省份|城市|运营商。
-     */
-    private function getIpRegion(string $ip): ?string
-    {
-        if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
-            return null;
-        }
-
-        try {
-            $result = (new Ip2Region())->memorySearch($ip);
-            $region = (string) ($result['region'] ?? '');
-            return $region === '' ? null : $region;
-        } catch (Throwable $exception) {
-            Log::warning('订阅 IP 归属地查询失败', ['ip' => $ip, 'exception' => $exception->getMessage()]);
-            return null;
-        }
     }
 
     /**
