@@ -51,16 +51,16 @@ class SubscriptionDomainService
         }
 
         $context = [
-            'user_id' => $user->id,
-            'email' => $user->email,
-            'ip' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-            'source' => $source,
-            'fake_domain' => $this->getFakeDomain(),
-            'low_traffic_days' => $this->getLowTrafficDays(),
+            'user_id'           => $user->id,
+            'email'             => $user->email,
+            'ip'                => $request->ip(),
+            'user_agent'        => $request->userAgent(),
+            'source'            => $source,
+            'fake_domain'       => $this->getFakeDomain(),
+            'low_traffic_days'  => $this->getLowTrafficDays(),
             'low_traffic_limit' => $this->getLowTrafficLimit(),
-            'reason' => $match['reason'],
-            'matched_value' => $match['value'],
+            'reason'            => $match['reason'],
+            'matched_value'     => $match['value'],
         ];
 
         // 每一次成功返回都会写日志，方便在 storage/logs 中完整追溯。
@@ -365,11 +365,10 @@ class SubscriptionDomainService
     private function buildTelegramMessage(User $user, Request $request, string $source, array $match): string
     {
         return implode("\n", [
-            '异常用户',
-            '',
             '用户 ID: ' . $user->id,
             '邮箱: ' . $user->email,
             '请求 IP: ' . $request->ip(),
+            '请求域名: ' . $request->getHost(),
             '命中原因: ' . $match['reason'],
             '命中内容: ' . $match['value'],
             '订阅入口: ' . $source,
