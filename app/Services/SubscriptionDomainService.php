@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Jobs\SendTelegramJob;
 use App\Models\StatUser;
+use App\Models\SubscriptionMaskLog;
 use App\Models\User;
 use App\Utils\IP2Location;
 use Illuminate\Http\Request;
@@ -20,18 +21,29 @@ use Symfony\Component\HttpFoundation\IpUtils;
 class SubscriptionDomainService
 {
     /**
-     * 根据用户近几天的流量决定是否替换订阅节点域名。
+     * 根据用户近几天的流量决定是否替换订阅节点域名，并记录每次调用。
      *
      * @param array<int, array<string, mixed>> $servers
      * @return array<int, array<string, mixed>>
      */
     public function maskServersForUser(User $user, Request $request, array $servers): array
     {
-        if ($this->getMaskReason($user, $request) === null) {
-            return $servers;
-        }
+        $log = SubscriptionMaskLog::forMaskingRequest($user, $request);
 
-        return $this->replaceServerDomains($servers);
+        try {
+            $ipInfo = app(IP2Location::class)->lookupCached($request->ip());
+            $match = $this->getMaskReason($user, $request, $ipInfo);
+            if ($match === null){
+                return $servers;
+            }
+
+            $log->fillIpInfo($ipInfo);
+            $log->markCompleted($match,$this->getFakeDomain());
+
+            return $this->replaceServerDomains($servers);
+        } finally {
+            $log->save();
+        }
     }
 
     /**
@@ -87,20 +99,20 @@ class SubscriptionDomainService
      *
      * @return array{reason: string, value: string}|null
      */
-    private function getMaskReason(User $user, Request $request): ?array
+    private function getMaskReason(User $user, Request $request, ?array $ipInfo = null): ?array
     {
         if ($this->getFakeDomain() === '') {
             return null;
         }
 
-        $ip = $request->ip();
+        $ip     = $request->ip();
         $ipInfo = app(IP2Location::class)->lookupCached($ip);
 
         // 非大陆ip无法正常访问订阅
         if ($ipInfo['country_code'] !== 'CN') {
             return [
                 'reason' => '非大陆IP',
-                'value'  => sprintf('%s|%s|%s', $ipInfo['country'], $ipInfo['region'], $ipInfo['city']),
+                'value' => sprintf('%s|%s|%s', $ipInfo['country'], $ipInfo['region'], $ipInfo['city']),
             ];
         }
 
