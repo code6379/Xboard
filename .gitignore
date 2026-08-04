@@ -34,3 +34,4 @@ compose.split.yaml
 .scribe
 storage/app/*
 test.*
+AGENTS.md
