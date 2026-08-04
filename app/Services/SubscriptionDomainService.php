@@ -32,12 +32,12 @@ class SubscriptionDomainService
 
         try {
             $ipInfo = app(IP2Location::class)->lookupCached($request->ip());
+            $log->fillIpInfo($ipInfo);
             $match = $this->getMaskReason($user, $request, $ipInfo);
-            if ($match === null){
+            if ($match === null) {
                 return $servers;
             }
 
-            $log->fillIpInfo($ipInfo);
             $log->markCompleted($match,$this->getFakeDomain());
 
             return $this->replaceServerDomains($servers);
