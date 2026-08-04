@@ -19,7 +19,6 @@ class SubscriptionMaskLog extends Model
         'masked'     => 'boolean',
         'is_proxy'   => 'boolean',
         'banned'     => 'boolean',
-        'completed'  => 'boolean',
         'created_at' => 'datetime',
     ];
 
