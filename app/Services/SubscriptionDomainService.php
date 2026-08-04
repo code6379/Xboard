@@ -96,16 +96,16 @@ class SubscriptionDomainService
         $ip = $request->ip();
         $ipInfo = app(IP2Location::class)->lookupCached($ip);
 
-        // 中国大陆 IP 可直接继续；非大陆 IP 必须在完整 IP 白名单中。
-        if ($ipInfo['country_code'] !== 'CN' && !$this->isAllowlistedIp($ip)) {
+        // 非大陆ip无法正常访问订阅
+        if ($ipInfo['country_code'] !== 'CN') {
             return [
                 'reason' => '非大陆IP',
-                'value' => $ipInfo['country'] . $ipInfo['region'] . $ipInfo['city'],
+                'value'  => sprintf('%s|%s|%s', $ipInfo['country'], $ipInfo['region'], $ipInfo['city']),
             ];
         }
 
-        // 白名单用户永不替换域名，即使同时命中其他异常规则。
-        if ($this->matchWhitelistEmail($user->email)) {
+        // 白名单用户永不替换域名或者ip在允许名单内时
+        if ($this->matchWhitelistEmail($user->email) || $this->isAllowlistedIp($ip)) {
             return null;
         }
 
