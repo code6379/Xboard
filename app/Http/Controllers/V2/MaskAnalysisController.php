@@ -16,7 +16,7 @@ class MaskAnalysisController extends Controller
     {
         return view(
             $this->authenticated($request) ? 'mask-analysis.index' : 'mask-analysis.login',
-            ['analysisBaseUrl' => $this->analysisBaseUrl()]
+            ['analysisBaseUrl' => $this->analysisBasePath()]
         );
     }
 
@@ -123,13 +123,13 @@ class MaskAnalysisController extends Controller
         }
     }
 
-    private function analysisBaseUrl(): string
+    private function analysisBasePath(): string
     {
         $securePath = admin_setting(
             'secure_path',
             admin_setting('frontend_admin_path', hash('crc32b', config('app.key')))
         );
 
-        return url('api/v2/' . trim((string) $securePath, '/') . '/mask-analysis');
+        return '/api/v2/' . trim((string) $securePath, '/') . '/mask-analysis';
     }
 }
