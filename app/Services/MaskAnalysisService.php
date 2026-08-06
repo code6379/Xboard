@@ -82,6 +82,82 @@ class MaskAnalysisService
             ->values()
             ->all();
 
+        $sharedIpKeys = (clone $query)
+            ->whereNotNull('ip')
+            ->select('ip')
+            ->groupBy('ip')
+            ->havingRaw('COUNT(DISTINCT user_id) >= 2');
+        $sharedIpRequests = (clone $query)
+            ->whereIn('ip', $sharedIpKeys)
+            ->selectRaw('user_id, COUNT(*) AS request_count')
+            ->groupBy('user_id')
+            ->pluck('request_count', 'user_id');
+
+        $sharedUserAgentKeys = (clone $query)
+            ->whereNotNull('user_agent')
+            ->where('user_agent', '<>', '')
+            ->select('user_agent')
+            ->groupBy('user_agent')
+            ->havingRaw('COUNT(DISTINCT user_id) >= 2');
+        $sharedUserAgentRequests = (clone $query)
+            ->whereIn('user_agent', $sharedUserAgentKeys)
+            ->selectRaw('user_id, COUNT(*) AS request_count')
+            ->groupBy('user_id')
+            ->pluck('request_count', 'user_id');
+
+        $suspects = (clone $query)
+            ->selectRaw('user_id, MIN(email) AS email, COUNT(*) AS request_count, MAX(created_at) AS last_seen_at, COUNT(DISTINCT ip) AS distinct_ips, COUNT(DISTINCT country_code) AS distinct_countries, SUM(CASE WHEN is_proxy = 1 THEN 1 ELSE 0 END) AS proxy_requests, SUM(CASE WHEN fraud_score >= 70 THEN 1 ELSE 0 END) AS high_risk_requests')
+            ->groupBy('user_id')
+            ->get()
+            ->map(function ($user) use ($sharedIpRequests, $sharedUserAgentRequests): array {
+                $score = 0;
+                $signals = [];
+                $sharedIpCount = (int) $sharedIpRequests->get($user->user_id, 0);
+                $sharedUserAgentCount = (int) $sharedUserAgentRequests->get($user->user_id, 0);
+
+                if ($sharedIpCount > 0) {
+                    $score += 35;
+                    $signals[] = ['label' => '共享 IP', 'count' => $sharedIpCount];
+                }
+                if ($sharedUserAgentCount > 0) {
+                    $score += 10;
+                    $signals[] = ['label' => '共享 User-Agent', 'count' => $sharedUserAgentCount];
+                }
+                if ((int) $user->distinct_countries >= 2) {
+                    $score += 15;
+                    $signals[] = ['label' => '跨国访问', 'count' => (int) $user->distinct_countries];
+                }
+                if ((int) $user->distinct_ips >= 3) {
+                    $score += 12;
+                    $signals[] = ['label' => '多 IP 访问', 'count' => (int) $user->distinct_ips];
+                }
+                if ((int) $user->proxy_requests > 0) {
+                    $score += 8;
+                    $signals[] = ['label' => '代理网络', 'count' => (int) $user->proxy_requests];
+                }
+                if ((int) $user->high_risk_requests > 0) {
+                    $score += 15;
+                    $signals[] = ['label' => '高风险网络', 'count' => (int) $user->high_risk_requests];
+                }
+
+                return [
+                    'user_id' => (int) $user->user_id,
+                    'email' => (string) $user->email,
+                    'risk_score' => min($score, 100),
+                    'risk_level' => $score >= 60 ? '高风险' : ($score >= 25 ? '待核查' : '证据不足'),
+                    'request_count' => (int) $user->request_count,
+                    'last_seen_at' => $user->last_seen_at,
+                    'signals' => $signals,
+                ];
+            })
+            ->filter(fn (array $suspect): bool => $suspect['risk_score'] > 0)
+            ->sort(function (array $left, array $right): int {
+                return [$right['risk_score'], $right['request_count']] <=> [$left['risk_score'], $left['request_count']];
+            })
+            ->take(50)
+            ->values()
+            ->all();
+
         $total = (clone $query)->count();
         $logs = (clone $query)
             ->orderByDesc('id')
@@ -99,6 +175,7 @@ class MaskAnalysisService
                 'high_frequency_pairs' => $highFrequencyPairs,
                 'shared_user_agents' => $sharedUserAgents,
             ],
+            'suspects' => $suspects,
             'logs' => [
                 'data' => $logs,
                 'total' => $total,
