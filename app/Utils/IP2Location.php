@@ -92,6 +92,7 @@ class IP2Location
             'key'    => $apiKey,
             'ip'     => $ip,
             'format' => 'json',
+            'lang'   => 'zh-cn',
         ];
 
         try {
