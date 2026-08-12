@@ -110,7 +110,7 @@ class MaskAnalysisController extends Controller
             'masked_only' => $request->boolean('masked_only'),
             'min_fraud_score' => $validated['min_fraud_score'] ?? null,
             'page' => $validated['page'] ?? 1,
-            'page_size' => $validated['page_size'] ?? 50,
+            'page_size' => $validated['page_size'] ?? 10,
         ]));
     }
 

@@ -16,7 +16,7 @@ class MaskAnalysisService
     public function analyse(array $filters): array
     {
         $query = $this->query($filters);
-        $pageSize = max(1, min((int) ($filters['page_size'] ?? 50), 100));
+        $pageSize = max(1, min((int) ($filters['page_size'] ?? 10), 100));
         $page = max(1, (int) ($filters['page'] ?? 1));
 
         $summary = $this->summary($query);
