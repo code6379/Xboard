@@ -95,7 +95,8 @@ class MaskAnalysisService
             ->orderByDesc('request_count')
             ->limit(self::RANKING_LIMIT)
             ->get()
-            ->map(fn ($row): array => [
+            ->map(function ($row) use ($query): array {
+                return [
                 'ip' => (string) $row->ip,
                 'request_count' => (int) $row->request_count,
                 'distinct_users' => (int) $row->distinct_users,
@@ -103,7 +104,9 @@ class MaskAnalysisService
                 'latest_seen_at' => $row->latest_seen_at,
                 'max_fraud_score' => (int) ($row->max_fraud_score ?? 0),
                 'is_proxy' => (bool) $row->is_proxy,
-            ])
+                    'accounts' => $this->accountsForValue($query, 'ip', $row->ip),
+                ];
+            })
             ->values()
             ->all();
 
@@ -120,13 +123,16 @@ class MaskAnalysisService
             ->orderByDesc('request_count')
             ->limit(self::RANKING_LIMIT)
             ->get()
-            ->map(fn ($row): array => [
+            ->map(function ($row) use ($query): array {
+                return [
                 'user_agent' => (string) $row->user_agent,
                 'request_count' => (int) $row->request_count,
                 'distinct_users' => (int) $row->distinct_users,
                 'distinct_ips' => (int) $row->distinct_ips,
                 'latest_seen_at' => $row->latest_seen_at,
-            ])
+                    'accounts' => $this->accountsForValue($query, 'user_agent', $row->user_agent),
+                ];
+            })
             ->values()
             ->all();
 
@@ -208,6 +214,7 @@ class MaskAnalysisService
                     'last_seen_at' => $row->last_seen_at,
                     'short_term_spread' => $spread,
                     'signals' => $signals,
+                    'accounts' => [$this->accountFromUserRow($row)],
                 ];
             })
             ->filter(fn (array $user): bool => $user['risk_score'] > 0)
@@ -222,14 +229,17 @@ class MaskAnalysisService
             ->filter(fn ($row): bool => (int) $row->proxy_ips > 0)
             ->sortByDesc(fn ($row): array => [(int) $row->proxy_ips, (int) $row->proxy_requests, (int) $row->max_fraud_score])
             ->take(self::RANKING_LIMIT)
-            ->map(fn ($row): array => [
+            ->map(function ($row): array {
+                return [
                 'user_id' => (int) $row->user_id,
                 'email' => (string) $row->email,
                 'proxy_ips' => (int) $row->proxy_ips,
                 'proxy_requests' => (int) $row->proxy_requests,
                 'max_fraud_score' => (int) ($row->max_fraud_score ?? 0),
                 'distinct_countries' => (int) $row->distinct_countries,
-            ])
+                    'accounts' => [$this->accountFromUserRow($row)],
+                ];
+            })
             ->values()
             ->all();
 
@@ -237,14 +247,17 @@ class MaskAnalysisService
             ->filter(fn ($row): bool => (int) $row->distinct_countries >= 2)
             ->sortByDesc(fn ($row): array => [(int) $row->distinct_countries, (int) $row->distinct_ips, (int) $row->request_count])
             ->take(self::RANKING_LIMIT)
-            ->map(fn ($row): array => [
+            ->map(function ($row): array {
+                return [
                 'user_id' => (int) $row->user_id,
                 'email' => (string) $row->email,
                 'distinct_countries' => (int) $row->distinct_countries,
                 'distinct_ips' => (int) $row->distinct_ips,
                 'request_count' => (int) $row->request_count,
                 'last_seen_at' => $row->last_seen_at,
-            ])
+                    'accounts' => [$this->accountFromUserRow($row)],
+                ];
+            })
             ->values()
             ->all();
 
@@ -252,14 +265,17 @@ class MaskAnalysisService
             ->filter(fn ($row): bool => (int) $row->request_count >= 5)
             ->sortByDesc(fn ($row): array => [(int) $row->request_count, (int) $row->distinct_ips])
             ->take(self::RANKING_LIMIT)
-            ->map(fn ($row): array => [
+            ->map(function ($row): array {
+                return [
                 'user_id' => (int) $row->user_id,
                 'email' => (string) $row->email,
                 'request_count' => (int) $row->request_count,
                 'distinct_ips' => (int) $row->distinct_ips,
                 'proxy_requests' => (int) $row->proxy_requests,
                 'last_seen_at' => $row->last_seen_at,
-            ])
+                    'accounts' => [$this->accountFromUserRow($row)],
+                ];
+            })
             ->values()
             ->all();
 
@@ -271,12 +287,15 @@ class MaskAnalysisService
             ->orderByDesc('request_count')
             ->limit(self::RANKING_LIMIT)
             ->get()
-            ->map(fn ($row): array => [
+            ->map(function ($row) use ($query): array {
+                return [
                 'reason' => (string) $row->reason,
                 'request_count' => (int) $row->request_count,
                 'distinct_users' => (int) $row->distinct_users,
                 'latest_seen_at' => $row->latest_seen_at,
-            ])
+                    'accounts' => $this->accountsForValue($query, 'reason', $row->reason),
+                ];
+            })
             ->values()
             ->all();
 
@@ -284,7 +303,15 @@ class MaskAnalysisService
             'risk_users' => $riskUsers,
             'shared_ips' => $sharedIps,
             'multi_ip_users' => $this->multiIpUsers($userRows),
-            'short_term_spread' => $this->shortTermSpread($query)->take(self::RANKING_LIMIT)->values()->all(),
+            'short_term_spread' => $this->shortTermSpread($query)
+                ->take(self::RANKING_LIMIT)
+                ->map(function (array $row) use ($query): array {
+                    $row['accounts'] = $this->accountsForValue($query, 'user_id', $row['user_id']);
+
+                    return $row;
+                })
+                ->values()
+                ->all(),
             'proxy_users' => $proxyUsers,
             'shared_user_agents' => $sharedUserAgents,
             'cross_region_users' => $crossRegionUsers,
@@ -309,6 +336,34 @@ class MaskAnalysisService
             ])
             ->values()
             ->all();
+    }
+
+    private function accountsForValue(Builder $query, string $field, mixed $value): array
+    {
+        return (clone $query)
+            ->where($field, $value)
+            ->selectRaw('user_id, MIN(email) AS email, COUNT(*) AS request_count, COUNT(DISTINCT ip) AS distinct_ips, COUNT(DISTINCT country_code) AS distinct_countries, SUM(CASE WHEN is_proxy = 1 THEN 1 ELSE 0 END) AS proxy_requests, MAX(fraud_score) AS max_fraud_score, MIN(created_at) AS first_seen_at, MAX(created_at) AS last_seen_at')
+            ->groupBy('user_id')
+            ->orderByDesc('request_count')
+            ->get()
+            ->map(fn ($row): array => $this->accountFromUserRow($row))
+            ->values()
+            ->all();
+    }
+
+    private function accountFromUserRow(object $row): array
+    {
+        return [
+            'user_id' => (int) $row->user_id,
+            'email' => (string) $row->email,
+            'request_count' => (int) ($row->request_count ?? 0),
+            'distinct_ips' => (int) ($row->distinct_ips ?? 0),
+            'distinct_countries' => (int) ($row->distinct_countries ?? 0),
+            'proxy_requests' => (int) ($row->proxy_requests ?? 0),
+            'max_fraud_score' => (int) ($row->max_fraud_score ?? 0),
+            'first_seen_at' => $row->first_seen_at ?? null,
+            'last_seen_at' => $row->last_seen_at ?? null,
+        ];
     }
 
     private function sharedIpQuery(Builder $query): Builder
