@@ -106,6 +106,12 @@ class SubscriptionDomainService
         }
 
         $ip     = $request->ip();
+
+        // 白名单用户永不替换域名或者ip在允许名单内时
+        if ($this->matchWhitelistEmail($user->email) || $this->isAllowlistedIp($ip)) {
+            return null;
+        }
+
         $ipInfo = app(IP2Location::class)->lookupCached($ip);
 
         // 非大陆ip无法正常访问订阅
@@ -114,11 +120,6 @@ class SubscriptionDomainService
                 'reason' => '非大陆IP',
                 'value' => sprintf('%s|%s|%s', $ipInfo['country'], $ipInfo['region'], $ipInfo['city']),
             ];
-        }
-
-        // 白名单用户永不替换域名或者ip在允许名单内时
-        if ($this->matchWhitelistEmail($user->email) || $this->isAllowlistedIp($ip)) {
-            return null;
         }
 
         if ($email = $this->matchSuspiciousEmail($user->email)) {
