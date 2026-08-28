@@ -1,0 +1,8 @@
+{
+    "name": "订阅域名伪装",
+    "code": "subscription_domain_mask",
+    "version": "1.0.0",
+    "description": "通过订阅 Hook 对符合条件的用户替换节点域名，并在订阅成功后发送通知",
+    "author": "XBoard Team",
+    "type": "feature"
+}

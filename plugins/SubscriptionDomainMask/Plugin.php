@@ -1,11 +1,12 @@
 <?php
 
-namespace App\Services;
+namespace Plugin\SubscriptionDomainMask;
 
 use App\Jobs\SendTelegramJob;
 use App\Models\StatUser;
 use App\Models\SubscriptionMaskLog;
 use App\Models\User;
+use App\Services\Plugin\AbstractPlugin;
 use App\Utils\IP2Location;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -18,8 +19,47 @@ use Symfony\Component\HttpFoundation\IpUtils;
  * 用于识别连续低流量用户，并仅在生成订阅内容时替换节点域名。
  * 不会修改数据库内的真实节点配置，也不会影响后台和节点通讯。
  */
-class SubscriptionDomainService
+class Plugin extends AbstractPlugin
 {
+    public function boot(): void
+    {
+        $this->filter('client.subscribe.servers', [$this, 'maskSubscribeServers'], 10);
+        $this->listen('client.subscribe.success', [$this, 'notifySuccessfulSubscription'], 10);
+    }
+
+    /**
+     * 替换订阅内容中的节点域名
+     * @param array   $servers
+     * @param User    $user
+     * @param Request $request
+     *
+     * @return array[]
+     */
+    public function maskSubscribeServers(array $servers, User $user, Request $request): array
+    {
+        return $this->maskServersForUser($user, $request, $servers);
+    }
+
+
+    /**
+     * 订阅成功通知
+     * @param array $payload
+     *
+     * @return void
+     */
+    public function notifySuccessfulSubscription(array $payload): void
+    {
+        $user = $payload['user'] ?? null;
+        $request = $payload['request'] ?? null;
+        $source = $payload['source'] ?? '普通订阅';
+
+        if (!$user instanceof User || !$request instanceof Request) {
+            return;
+        }
+
+        $this->notifySuccessfulMaskedSubscription($user, $request, $source);
+    }
+
     /**
      * 根据用户近几天的流量决定是否替换订阅节点域名，并记录每次调用。
      *

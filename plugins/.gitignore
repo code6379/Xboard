@@ -1,2 +1,6 @@
 *
 !.gitignore
+!ServerFilter/
+!ServerFilter/**
+!SubscriptionDomainMask/
+!SubscriptionDomainMask/**

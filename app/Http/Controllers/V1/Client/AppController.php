@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\V1\Client;
 
 use App\Http\Controllers\Controller;
+use App\Services\Plugin\HookManager;
 use App\Services\ServerService;
-use App\Services\SubscriptionDomainService;
 use App\Services\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
@@ -17,12 +17,11 @@ class AppController extends Controller
         $servers = [];
         $user = $request->user();
         $userService = new UserService();
-        $subscriptionDomainService = app(SubscriptionDomainService::class);
         $isUserAvailable = $userService->isAvailable($user);
         if ($isUserAvailable) {
             $servers = ServerService::getAvailableServers($user);
             // 与普通订阅保持一致，低流量用户只拿到替换后的节点域名。
-            $servers = $subscriptionDomainService->maskServersForUser($user, $request, $servers);
+            $servers = HookManager::filter('client.subscribe.servers', $servers, $user, $request);
         }
         $defaultConfig = base_path() . '/resources/rules/app.clash.yaml';
         $customConfig = base_path() . '/resources/rules/custom.app.clash.yaml';
@@ -65,7 +64,11 @@ class AppController extends Controller
 
         // YAML 成功生成后才记录和通知，避免配置构建失败时误报。
         if ($isUserAvailable) {
-            $subscriptionDomainService->notifySuccessfulMaskedSubscription($user, $request, 'Clash 配置');
+            HookManager::call('client.subscribe.success', [
+                'user' => $user,
+                'request' => $request,
+                'source' => 'Clash 配置',
+            ]);
         }
 
         return $response;

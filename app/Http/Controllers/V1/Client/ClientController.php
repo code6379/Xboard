@@ -7,7 +7,6 @@ use App\Models\Server;
 use App\Protocols\General;
 use App\Services\Plugin\HookManager;
 use App\Services\ServerService;
-use App\Services\SubscriptionDomainService;
 use App\Services\UserService;
 use App\Utils\Helper;
 use Illuminate\Http\Request;
@@ -73,10 +72,6 @@ class ClientController extends Controller
             filterKeywords: $filterKeywords
         );
 
-        // 低流量用户只在订阅输出时替换域名，真实节点配置不会被修改。
-        $subscriptionDomainService = app(SubscriptionDomainService::class);
-        $serversFiltered = $subscriptionDomainService->maskServersForUser($user, $request, $serversFiltered);
-
         $this->setSubscribeInfoToServers($serversFiltered, $user, count($servers) - count($serversFiltered));
         $serversFiltered = $this->addPrefixToServerName($serversFiltered);
 
@@ -91,8 +86,12 @@ class ClientController extends Controller
 
         $response = $protocolInstance->handle();
 
-        // 仅在订阅内容成功生成后记录并推送告警，避免生成失败时误报。
-        $subscriptionDomainService->notifySuccessfulMaskedSubscription($user, $request, '普通订阅');
+        // 仅在订阅内容成功生成后触发插件通知，避免生成失败时误报。
+        HookManager::call('client.subscribe.success', [
+            'user' => $user,
+            'request' => $request,
+            'source' => '普通订阅',
+        ]);
 
         return $response;
     }
