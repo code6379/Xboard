@@ -20,6 +20,7 @@
         },
         "allowed_group_ids": {
             "type": "string",
+            "default": "",
             "label": "允许的分组 ID",
             "description": "只有用户分组 ID 命中此列表时才返回免费节点，多个分组 ID 使用英文逗号分隔，例如：1,2,5"
         }
