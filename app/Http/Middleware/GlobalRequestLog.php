@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Throwable;
 use App\Models\User;
+use App\Models\Plugin;
 use App\Utils\Helper;
 use Closure;
 use App\Utils\IP2Location;
@@ -26,7 +27,7 @@ class GlobalRequestLog
 
         try {
             $user = $this->resolveUser($request);
-            $ip2locationService = app(IP2Location::class);
+            $ip2locationService = new IP2Location($this->getIp2LocationKeys());
             $ipInfo = $ip2locationService->lookupCached($request->ip());
 
             Log::channel('request')->info('request', [
@@ -100,6 +101,24 @@ class GlobalRequestLog
         }
 
         return [];
+    }
+
+    /**
+     * 从订阅域名伪装插件读取 IP2Location 密钥。
+     *
+     * @return array<int, string>
+     */
+    private function getIp2LocationKeys(): array
+    {
+        $plugin = Plugin::query()
+            ->where('code', 'subscription_domain_mask')
+            ->where('is_enabled', true)
+            ->first();
+
+        $config = $plugin && $plugin->config ? json_decode($plugin->config, true) : [];
+        $rawKeys = trim((string) ($config['ip2location_api_keys'] ?? ''));
+
+        return array_values(array_filter(array_map('trim', explode(',', $rawKeys))));
     }
 
     private function clean(array $payload): array

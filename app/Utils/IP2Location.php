@@ -22,17 +22,7 @@ class IP2Location
 
     public function __construct(array $keys = [])
     {
-        $this->keys = !empty($keys) ? $keys : $this->parseKeysFromEnv();
-    }
-
-    /**
-     * 直接从 .env 读取 IP2LOCATION_API_KEYS,逗号分隔多个 key
-     */
-    private function parseKeysFromEnv(): array
-    {
-        $raw = env('IP2LOCATION_API_KEYS', '');
-
-        return array_values(array_filter(array_map('trim', explode(',', $raw))));
+        $this->keys = array_values(array_filter(array_map('trim', $keys)));
     }
 
     /**

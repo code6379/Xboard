@@ -1,0 +1,27 @@
+{
+    "name": "免费节点",
+    "code": "free_server",
+    "version": "1.0.0",
+    "description": "从配置的订阅地址获取并合并免费节点",
+    "author": "XBoard Team",
+    "type": "feature",
+    "config": {
+        "enabled": {
+            "type": "boolean",
+            "default": false,
+            "label": "启用免费节点",
+            "description": "是否将远程订阅中的免费节点合并到用户订阅"
+        },
+        "subscription_url": {
+            "type": "string",
+            "default": "",
+            "label": "免费节点订阅地址",
+            "description": "用于拉取免费节点的 sing-box JSON 订阅地址，必须由后台配置"
+        },
+        "allowed_group_ids": {
+            "type": "string",
+            "label": "允许的分组 ID",
+            "description": "只有用户分组 ID 命中此列表时才返回免费节点，多个分组 ID 使用英文逗号分隔，例如：1,2,5"
+        }
+    }
+}

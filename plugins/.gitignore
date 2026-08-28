@@ -4,3 +4,5 @@
 !ServerFilter/**
 !SubscriptionDomainMask/
 !SubscriptionDomainMask/**
+!FreeServer/
+!FreeServer/**

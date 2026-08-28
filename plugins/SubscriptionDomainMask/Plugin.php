@@ -6,6 +6,7 @@ use App\Jobs\SendTelegramJob;
 use App\Models\StatUser;
 use App\Models\SubscriptionMaskLog;
 use App\Models\User;
+use App\Models\Plugin as PluginModel;
 use App\Services\Plugin\AbstractPlugin;
 use App\Utils\IP2Location;
 use Illuminate\Http\Request;
@@ -29,6 +30,7 @@ class Plugin extends AbstractPlugin
 
     /**
      * 替换订阅内容中的节点域名
+     *
      * @param array   $servers
      * @param User    $user
      * @param Request $request
@@ -39,7 +41,6 @@ class Plugin extends AbstractPlugin
     {
         return $this->maskServersForUser($user, $request, $servers);
     }
-
 
     /**
      * 订阅成功通知
@@ -71,7 +72,7 @@ class Plugin extends AbstractPlugin
         $log = SubscriptionMaskLog::forMaskingRequest($user, $request);
 
         try {
-            $ipInfo = app(IP2Location::class)->lookupCached($request->ip());
+            $ipInfo = $this->getIp2Location()->lookupCached($request->ip());
             $log->fillIpInfo($ipInfo);
             $match = $this->getMaskReason($user, $request, $ipInfo);
             if ($match === null) {
@@ -152,7 +153,7 @@ class Plugin extends AbstractPlugin
             return null;
         }
 
-        $ipInfo = app(IP2Location::class)->lookupCached($ip);
+        $ipInfo = $this->getIp2Location()->lookupCached($ip);
 
         // 非大陆ip无法正常访问订阅
         if ($ipInfo['country_code'] !== 'CN') {
@@ -220,7 +221,7 @@ class Plugin extends AbstractPlugin
      */
     private function isAllowlistedIp(string $ip): bool
     {
-        $offlineList = $this->readOfflineList('SUBSCRIPTION_ALLOWLIST_IPS_FILE');
+        $offlineList = $this->getConfiguredList('allowlist_ips');
         if (empty($offlineList)) {
             return true;
         }
@@ -233,7 +234,7 @@ class Plugin extends AbstractPlugin
     }
 
     /**
-     * 在离线 IP/CIDR 名单中查找请求 IP，支持 IPv4、IPv6、单个 IP 和 CIDR。
+     * 在配置的 IP/CIDR 名单中查找请求 IP，支持 IPv4、IPv6、单个 IP 和 CIDR。
      */
     private function matchSuspiciousIpRange(string $ip): ?string
     {
@@ -241,7 +242,7 @@ class Plugin extends AbstractPlugin
             return null;
         }
 
-        foreach ($this->readOfflineList('SUBSCRIPTION_BLACKLIST_IP_RANGES_FILE') as $range) {
+        foreach ($this->getConfiguredList('blacklist_ip_ranges') as $range) {
             if (IpUtils::checkIp($ip, $range)) {
                 return $range;
             }
@@ -251,12 +252,12 @@ class Plugin extends AbstractPlugin
     }
 
     /**
-     * 在离线邮箱名单中按完整邮箱精确匹配，邮箱大小写不敏感。
+     * 在配置的邮箱名单中按完整邮箱精确匹配，邮箱大小写不敏感。
      */
     private function matchSuspiciousEmail(string $email): ?string
     {
         $email = strtolower(trim($email));
-        foreach ($this->readOfflineList('SUBSCRIPTION_BLACKLIST_EMAILS_FILE') as $suspiciousEmail) {
+        foreach ($this->getConfiguredList('blacklist_emails') as $suspiciousEmail) {
             if ($email === strtolower($suspiciousEmail)) {
                 return $suspiciousEmail;
             }
@@ -266,12 +267,12 @@ class Plugin extends AbstractPlugin
     }
 
     /**
-     * 在离线白名单中按完整邮箱精确匹配，邮箱大小写不敏感。
+     * 在配置的邮箱白名单中按完整邮箱精确匹配，邮箱大小写不敏感。
      */
     private function matchWhitelistEmail(string $email): ?string
     {
         $email = strtolower(trim($email));
-        foreach ($this->readOfflineList('SUBSCRIPTION_WHITELIST_EMAILS_FILE') as $whitelistEmail) {
+        foreach ($this->getConfiguredList('whitelist_emails') as $whitelistEmail) {
             if ($email === strtolower($whitelistEmail)) {
                 return $whitelistEmail;
             }
@@ -281,134 +282,124 @@ class Plugin extends AbstractPlugin
     }
 
     /**
-     * 将连续低流量用户的邮箱和当前访问 IP 追加到对应黑名单文件。
-     * 已存在的内容不会重复写入；文件锁避免多个订阅请求同时写入时发生冲突。
+     * 将连续低流量用户的邮箱和当前访问 IP 追加到插件配置中的黑名单。
+     * 已存在的内容不会重复写入。
      */
     private function addLowTrafficUserToBlacklist(User $user, string $ip): void
     {
-        $this->appendOfflineListValue('SUBSCRIPTION_BLACKLIST_EMAILS_FILE', strtolower(trim($user->email)));
+        $this->appendConfiguredListValue('blacklist_emails', strtolower(trim($user->email)));
 
         if (filter_var($ip, FILTER_VALIDATE_IP)) {
-            $this->appendOfflineListValue('SUBSCRIPTION_BLACKLIST_IP_RANGES_FILE', $ip);
+            $this->appendConfiguredListValue('blacklist_ip_ranges', $ip);
         }
     }
 
     /**
-     * 读取离线名单文件：忽略空行和以 # 开头的注释行。
-     * 文件路径由 .env 配置，相对路径相对于项目根目录。
+     * 读取插件配置中的多行名单：忽略空行和以 # 开头的注释行。
      *
      * @return array<int, string>
      */
-    public function readOfflineList(string $environmentKey): array
+    private function getConfiguredList(string $configKey): array
     {
-        $path = $this->getOfflineListPath($environmentKey);
-        if ($path === null || !is_file($path) || !is_readable($path)) {
-            return [];
-        }
+        $lines = preg_split('/\R/', (string) $this->getConfig($configKey, '')) ?: [];
 
-        $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
-        return array_values(array_filter(array_map('trim', $lines), fn(string $line): bool => $line !== '' && !str_starts_with($line, '#')));
+        return array_values(array_filter(
+            array_map('trim', $lines),
+            fn(string $line): bool => $line !== '' && !str_starts_with($line, '#')
+        ));
     }
 
     /**
-     * 将一条内容追加到离线名单文件，并避免重复写入。
+     * 向插件配置中的多行名单追加一条内容，并避免重复写入。
      */
-    private function appendOfflineListValue(string $environmentKey, string $value): void
+    private function appendConfiguredListValue(string $configKey, string $value): void
     {
         if ($value === '') {
             return;
         }
 
-        $path = $this->getOfflineListPath($environmentKey);
-        if ($path === null) {
-            Log::warning('订阅黑名单文件路径未配置', ['environment_key' => $environmentKey]);
+        $values = $this->getConfiguredList($configKey);
+        if (in_array(strtolower($value), array_map('strtolower', $values), true)) {
             return;
         }
 
-        $directory = dirname($path);
-        if (!is_dir($directory) && !mkdir($directory, 0755, true) && !is_dir($directory)) {
-            Log::warning('无法创建订阅黑名单目录', ['directory' => $directory]);
-            return;
-        }
-
-        $file = fopen($path, 'c+');
-        if ($file === false) {
-            Log::warning('无法写入订阅黑名单文件', ['path' => $path]);
-            return;
-        }
-
-        try {
-            if (!flock($file, LOCK_EX)) {
-                return;
-            }
-
-            $content = stream_get_contents($file) ?: '';
-            $values = array_map('strtolower', array_map('trim', preg_split('/\R/', $content)));
-            if (in_array(strtolower($value), $values, true)) {
-                return;
-            }
-
-            fseek($file, 0, SEEK_END);
-            fwrite($file, (strlen($content) > 0 && !str_ends_with($content, "\n") ? "\n" : '') . $value . "\n");
-        } finally {
-            flock($file, LOCK_UN);
-            fclose($file);
-        }
+        $values[] = $value;
+        $this->updatePluginConfigValue($configKey, implode("\n", $values));
     }
 
-    /**
-     * 获取 .env 配置的离线名单绝对路径；未配置时返回 null。
-     */
-    private function getOfflineListPath(string $environmentKey): ?string
+    private function updatePluginConfigValue(string $key, mixed $value): void
     {
-        $path = trim((string) env($environmentKey));
-        return $path === '' ? null : base_path($path);
+        $plugin = PluginModel::query()->where('code', $this->getPluginCode())->first();
+        if (!$plugin) {
+            Log::warning('无法更新订阅域名伪装插件配置', ['config_key' => $key]);
+            return;
+        }
+
+        $config = $plugin->config ? json_decode($plugin->config, true) : [];
+        if (!is_array($config)) {
+            $config = [];
+        }
+
+        $config[$key] = $value;
+        $plugin->update(['config' => json_encode($config)]);
+        $this->setConfig(array_merge($this->getConfig(), [$key => $value]));
     }
 
     /**
-     * 从 .env 的 FAKE_DOMAIN 读取固定假域名。
+     * 从插件配置读取固定假域名。
      * 留空表示暂不启用该功能，所有用户都会收到真实节点域名。
      */
     private function getFakeDomain(): string
     {
-        return trim((string) env('FAKE_DOMAIN'));
+        return trim((string) $this->getConfig('fake_domain', ''));
     }
 
     /**
-     * 从 .env 的 LOW_TRAFFIC_DAYS 读取统计天数；缺失或无效时不启用低流量规则。
+     * 获取用于 IP 归属查询的服务实例。
+     */
+    private function getIp2Location(): IP2Location
+    {
+        $rawKeys = trim((string) $this->getConfig('ip2location_api_keys', ''));
+        $keys = array_values(array_filter(array_map('trim', explode(',', $rawKeys))));
+
+        return new IP2Location($keys);
+    }
+
+    /**
+     * 从插件配置读取统计天数；缺失或无效时不启用低流量规则。
      */
     private function getLowTrafficDays(): ?int
     {
-        $days = filter_var(env('LOW_TRAFFIC_DAYS'), FILTER_VALIDATE_INT);
+        $days = filter_var($this->getConfig('low_traffic_days'), FILTER_VALIDATE_INT);
         return $days !== false && $days > 0 ? $days : null;
     }
 
     /**
-     * 从 .env 的 LOW_TRAFFIC_LIMIT 读取每日流量阈值，单位为字节。
+     * 从插件配置读取每日流量阈值，单位为字节。
      * 缺失或无效时不启用低流量规则。
      */
     private function getLowTrafficLimit(): ?int
     {
-        $limit = filter_var(env('LOW_TRAFFIC_LIMIT'), FILTER_VALIDATE_INT);
+        $limit = filter_var($this->getConfig('low_traffic_limit'), FILTER_VALIDATE_INT);
         return $limit !== false && $limit > 0 ? $limit : null;
     }
 
     /**
-     * 从 .env 的 LOW_TRAFFIC_ALERT_INTERVAL 读取同一用户的告警间隔。
+     * 从插件配置读取同一用户的告警间隔。
      * 缺失或无效时不发送 Telegram 告警。
      */
     private function getAlertInterval(): ?int
     {
-        $interval = filter_var(env('LOW_TRAFFIC_ALERT_INTERVAL'), FILTER_VALIDATE_INT);
+        $interval = filter_var($this->getConfig('low_traffic_alert_interval'), FILTER_VALIDATE_INT);
         return $interval !== false && $interval >= 60 ? $interval : null;
     }
 
     /**
-     * 从 .env 读取 Telegram 频道或群组 ID；缺失或无效时不发送告警。
+     * 从插件配置读取 Telegram 频道或群组 ID；缺失或无效时不发送告警。
      */
     private function getTelegramAlertChatId(): ?int
     {
-        $chatId = filter_var(env('TELEGRAM_ALERT_CHAT_ID'), FILTER_VALIDATE_INT);
+        $chatId = filter_var($this->getConfig('telegram_alert_chat_id'), FILTER_VALIDATE_INT);
         return $chatId !== false && $chatId !== 0 ? $chatId : null;
     }
 

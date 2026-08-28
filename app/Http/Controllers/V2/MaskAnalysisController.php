@@ -24,7 +24,7 @@ class MaskAnalysisController extends Controller
     {
         $request->validate(['password' => 'required|string|max:512']);
 
-        $password = config('mask-analysis.password');
+        $password = $this->getPluginConfig('mask_analysis_password');
         if (!is_string($password) || $password === '') {
             return response()->json(['message' => 'Mask analysis password is not configured.'], 503);
         }
@@ -118,7 +118,7 @@ class MaskAnalysisController extends Controller
     {
         try {
             return Crypt::decryptString(urldecode((string) $request->cookie(config('mask-analysis.cookie_name')))) === '1';
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
             return false;
         }
     }
@@ -131,5 +131,19 @@ class MaskAnalysisController extends Controller
         );
 
         return '/api/v2/' . trim((string) $securePath, '/') . '/mask-analysis';
+    }
+
+    private function getPluginConfig(string $key): mixed
+    {
+        $plugin = \App\Models\Plugin::query()
+            ->where('code', 'subscription_domain_mask')
+            ->where('is_enabled', true)
+            ->first();
+
+        if (!$plugin || !$plugin->config) {
+            return null;
+        }
+
+        return json_decode($plugin->config, true)[$key] ?? null;
     }
 }

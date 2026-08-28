@@ -4,5 +4,73 @@
     "version": "1.0.0",
     "description": "通过订阅 Hook 对符合条件的用户替换节点域名，并在订阅成功后发送通知",
     "author": "XBoard Team",
-    "type": "feature"
+    "type": "feature",
+    "config": {
+        "fake_domain": {
+            "type": "string",
+            "default": "oss-cn-guangzhou.chylink.xyz",
+            "label": "替换域名",
+            "description": "命中伪装规则时替换节点使用的域名，留空则不启用域名替换"
+        },
+        "ip2location_api_keys": {
+            "type": "text",
+            "default": "",
+            "label": "IP2LOCATION_API_KEYS",
+            "description": "IP2Location API 密钥，多个密钥使用英文逗号分隔，必须由后台配置"
+        },
+        "allowlist_ips": {
+            "type": "text",
+            "default": "",
+            "label": "允许 IP 名单",
+            "description": "允许直接访问真实节点的 IP/CIDR，每行一条，支持 # 注释"
+        },
+        "blacklist_ip_ranges": {
+            "type": "text",
+            "default": "",
+            "label": "IP 黑名单",
+            "description": "触发域名替换的 IP/CIDR，每行一条，支持 # 注释"
+        },
+        "blacklist_emails": {
+            "type": "text",
+            "default": "",
+            "label": "邮箱黑名单",
+            "description": "触发域名替换的邮箱，每行一条，支持 # 注释"
+        },
+        "whitelist_emails": {
+            "type": "text",
+            "default": "",
+            "label": "邮箱白名单",
+            "description": "不替换域名的邮箱，每行一条，支持 # 注释"
+        },
+        "low_traffic_days": {
+            "type": "number",
+            "default": 7,
+            "label": "低流量统计天数",
+            "description": "连续统计多少天低于阈值时触发替换，必须为正整数"
+        },
+        "low_traffic_limit": {
+            "type": "number",
+            "default": 5242880,
+            "label": "每日流量阈值",
+            "description": "每日流量阈值，单位为字节，必须为正整数"
+        },
+        "low_traffic_alert_interval": {
+            "type": "number",
+            "default": 86400,
+            "label": "告警间隔",
+            "description": "同一用户 Telegram 告警间隔，单位为秒，至少 60 秒"
+        },
+        "telegram_alert_chat_id": {
+            "type": "string",
+            "default": "",
+            "label": "Telegram 告警群组 ID",
+            "description": "接收低流量订阅告警的 Telegram 频道或群组 ID"
+        },
+        "mask_analysis_password": {
+            "type": "string",
+            "default": "",
+            "label": "订阅 IP 检测密码",
+            "description": "访问订阅 IP 检测页面的密码"
+        }
+    }
 }
