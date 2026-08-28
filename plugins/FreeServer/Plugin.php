@@ -82,7 +82,7 @@ class Plugin extends AbstractPlugin
     private function freeServers(array $servers): array
     {
         try {
-            $response = Http::timeout(5)
+            $response = Http::timeout(30)
                 ->withHeader('user-agent', 'sing-box')
                 ->get($this->getSubscriptionUrl());
 
@@ -114,7 +114,7 @@ class Plugin extends AbstractPlugin
         }
 
         // 剔除推广/引流的假节点。
-        $filtered = collect($jsonDecode['outbounds'] ?? [])
+        $filtered = collect($jsonDecode['outbounds'])
             ->filter(function ($item) {
                 if (!is_array($item) || count($item) !== 8) {
                     return false;
@@ -169,7 +169,12 @@ class Plugin extends AbstractPlugin
         foreach ($map as $code => $replace) {
             if (str_contains($tag, $code)) {
                 [$flag, $name] = explode(' ', $replace, 2);
-                $tag = str_replace($code, "{$flag} {$prefix}{$name}", $tag);
+                // 先只替换文字部分
+                $text = str_replace($code, $prefix . $name, $tag);
+                // 去掉所有空格
+                $text = str_replace(' ', '', $text);
+                // 拼上国旗+空格
+                return $flag . ' ' . $text;
             }
         }
 
