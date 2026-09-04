@@ -2,7 +2,7 @@
 set -eu
 
 XBOARD_REPO="https://github.com/code6379/Xboard.git"
-XBOARD_BRANCH="master"
+XBOARD_BRANCH="me-dev"
 COMPOSE_FILE="compose.custom.yaml"
 
 configure_compose() {
