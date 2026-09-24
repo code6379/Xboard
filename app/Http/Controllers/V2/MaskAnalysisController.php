@@ -136,7 +136,7 @@ class MaskAnalysisController extends Controller
     private function getPluginConfig(string $key): mixed
     {
         $plugin = \App\Models\Plugin::query()
-            ->where('code', 'subscription_domain_mask')
+            ->where('code', 'subscription_mask')
             ->where('is_enabled', true)
             ->first();
 

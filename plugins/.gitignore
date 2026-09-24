@@ -2,7 +2,7 @@
 !.gitignore
 !ServerFilter/
 !ServerFilter/**
-!SubscriptionDomainMask/
-!SubscriptionDomainMask/**
+!SubscriptionMask/
+!SubscriptionMask/**
 !FreeServer/
 !FreeServer/**

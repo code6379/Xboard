@@ -1,6 +1,6 @@
 <?php
 
-namespace Plugin\SubscriptionDomainMask;
+namespace Plugin\SubscriptionMask;
 
 use App\Jobs\SendTelegramJob;
 use App\Models\StatUser;
@@ -15,15 +15,21 @@ use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\IpUtils;
 
 /**
- * 订阅域名伪装服务。
+ * 订阅风控与域名遮蔽。
  *
- * 用于识别连续低流量用户，并仅在生成订阅内容时替换节点域名。
+ * 基于 IP 归属、代理画像、邮箱与流量名单判定风险用户，
+ * 命中后仅在生成订阅内容时替换节点域名。
  * 不会修改数据库内的真实节点配置，也不会影响后台和节点通讯。
  */
 class Plugin extends AbstractPlugin
 {
     public function boot(): void
     {
+        // 总开关：关闭时不注册任何钩子，插件完全静默。
+        if (!$this->getConfig('enabled', false)) {
+            return;
+        }
+
         $this->filter('client.subscribe.servers', [$this, 'maskSubscribeServers'], 10);
         $this->listen('client.subscribe.success', [$this, 'notifySuccessfulSubscription'], 10);
     }

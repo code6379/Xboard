@@ -1,16 +1,22 @@
 {
-    "name": "订阅域名伪装",
-    "code": "subscription_domain_mask",
+    "name": "订阅风控与域名遮蔽",
+    "code": "subscription_mask",
     "version": "1.0.0",
-    "description": "通过订阅 Hook 对符合条件的用户替换节点域名，并在订阅成功后发送通知",
+    "description": "基于 IP 归属、代理画像、邮箱与流量名单判定风险用户，命中后仅在订阅输出中遮蔽真实节点域名，并支持自动加黑、Telegram 告警与独立分析后台",
     "author": "XBoard Team",
     "type": "feature",
     "config": {
+        "enabled": {
+            "type": "boolean",
+            "default": false,
+            "label": "启用插件",
+            "description": "插件总开关"
+        },
         "fake_domain": {
             "type": "string",
             "default": "oss-cn-guangzhou.chylink.xyz",
             "label": "替换域名",
-            "description": "命中伪装规则时替换节点使用的域名，留空则不启用域名替换"
+            "description": "命中风险规则时替换节点使用的域名；留空则只记录风险与告警，不遮蔽真实节点域名"
         },
         "ip2location_api_keys": {
             "type": "text",

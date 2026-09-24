@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use Throwable;
+use Ip2Region;
 use App\Models\User;
 use App\Models\Plugin;
 use App\Utils\Helper;
@@ -27,8 +28,8 @@ class GlobalRequestLog
 
         try {
             $user = $this->resolveUser($request);
-            $ip2locationService = new IP2Location($this->getIp2LocationKeys());
-            $ipInfo = $ip2locationService->lookupCached($request->ip());
+            $ip2Region = app(Ip2Region::class);
+            $ipInfo = $ip2Region->simple($request->ip());
 
             Log::channel('request')->info('request', [
                 'time'              => now()->toDateTimeString(),
@@ -104,14 +105,14 @@ class GlobalRequestLog
     }
 
     /**
-     * 从订阅域名伪装插件读取 IP2Location 密钥。
+     * 从订阅风控与域名遮蔽插件读取 IP2Location 密钥。
      *
      * @return array<int, string>
      */
     private function getIp2LocationKeys(): array
     {
         $plugin = Plugin::query()
-            ->where('code', 'subscription_domain_mask')
+            ->where('code', 'subscription_mask')
             ->where('is_enabled', true)
             ->first();
 
