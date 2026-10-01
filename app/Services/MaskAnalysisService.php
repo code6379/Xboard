@@ -9,7 +9,7 @@ use Illuminate\Support\Collection;
 
 class MaskAnalysisService
 {
-    private const RANKING_LIMIT = 20;
+    private const RANKING_LIMIT = 50;
     private const EVIDENCE_LIMIT = 50;
     private const SPREAD_WINDOW_SECONDS = 3600;
 
@@ -85,6 +85,27 @@ class MaskAnalysisService
                 ->count(),
             'shared_ip_count' => $this->sharedIpQuery($query)->count(),
             'short_term_spread_count' => $this->shortTermSpread($query)->count(),
+            'multi_ip_user_count' => (clone $query)
+                ->whereNotNull('ip')
+                ->select('user_id')
+                ->groupBy('user_id')
+                ->havingRaw('COUNT(DISTINCT ip) >= 2')
+                ->get()
+                ->count(),
+            'cross_region_user_count' => (clone $query)
+                ->whereNotNull('country_code')
+                ->select('user_id')
+                ->groupBy('user_id')
+                ->havingRaw('COUNT(DISTINCT country_code) >= 2')
+                ->get()
+                ->count(),
+            'proxy_user_count' => (clone $query)->where('is_proxy', true)->distinct('user_id')->count('user_id'),
+            'shared_user_agent_count' => $this->sharedUserAgentQuery($query)->count(),
+            'high_risk_ip_count' => (clone $query)
+                ->whereNotNull('ip')
+                ->where('fraud_score', '>=', 70)
+                ->distinct('ip')
+                ->count('ip'),
         ];
     }
 
@@ -301,6 +322,8 @@ class MaskAnalysisService
 
         return [
             'risk_users' => $riskUsers,
+            'ip_details' => $this->ipRanking($query),
+            'high_risk_ips' => $this->ipRanking($query, true),
             'shared_ips' => $sharedIps,
             'multi_ip_users' => $this->multiIpUsers($userRows),
             'short_term_spread' => $this->shortTermSpread($query)
@@ -320,6 +343,63 @@ class MaskAnalysisService
             'high_frequency_pairs' => $highFrequencyUsers,
             'rule_hits' => $ruleHits,
         ];
+    }
+
+    /** 按 IP 汇总访问与情报，支持全部 IP 和高风险 IP 排行。 */
+    private function ipRanking(Builder $query, bool $highRiskOnly = false): array
+    {
+        $ipQuery = (clone $query)->whereNotNull('ip');
+        if ($highRiskOnly) {
+            $ipQuery->where('fraud_score', '>=', 70);
+        }
+
+        $grouped = $ipQuery
+            ->selectRaw('ip, COUNT(*) AS request_count, COUNT(DISTINCT user_id) AS distinct_users, COUNT(DISTINCT country_code) AS country_count, MAX(created_at) AS latest_seen_at, MAX(fraud_score) AS max_fraud_score, MAX(CASE WHEN is_proxy = 1 THEN 1 ELSE 0 END) AS is_proxy, MAX(country_code) AS country_code, MAX(country) AS country, MAX(region) AS region, MAX(city) AS city, MAX(isp) AS isp, MAX(as_name) AS as_name, MAX(usage_type) AS usage_type, MAX(proxy_type) AS proxy_type, MAX(risk_flags) AS risk_flags')
+            ->groupBy('ip');
+
+        $rows = (clone $grouped)
+            ->orderByDesc('max_fraud_score')
+            ->orderByDesc('request_count')
+            ->limit(self::RANKING_LIMIT)
+            ->get();
+        $addresses = $rows->pluck('ip')->all();
+        $accountsByIp = $addresses === []
+            ? collect()
+            : (clone $query)
+                ->whereIn('ip', $addresses)
+                ->selectRaw('ip, user_id, MIN(email) AS email, COUNT(*) AS request_count, COUNT(DISTINCT ip) AS distinct_ips, COUNT(DISTINCT country_code) AS distinct_countries, SUM(CASE WHEN is_proxy = 1 THEN 1 ELSE 0 END) AS proxy_requests, MAX(fraud_score) AS max_fraud_score, MIN(created_at) AS first_seen_at, MAX(created_at) AS last_seen_at')
+                ->groupBy('ip', 'user_id')
+                ->get()
+                ->groupBy('ip');
+
+        return $rows->map(function ($row) use ($accountsByIp): array {
+                $ip = (string) $row->ip;
+
+                return [
+                    'ip' => $ip,
+                    'request_count' => (int) $row->request_count,
+                    'distinct_users' => (int) $row->distinct_users,
+                    'country_count' => (int) $row->country_count,
+                    'latest_seen_at' => $row->latest_seen_at,
+                    'max_fraud_score' => (int) ($row->max_fraud_score ?? 0),
+                    'is_proxy' => (bool) $row->is_proxy,
+                    'country_code' => $row->country_code,
+                    'country' => $row->country,
+                    'region' => $row->region,
+                    'city' => $row->city,
+                    'isp' => $row->isp,
+                    'as_name' => $row->as_name,
+                    'usage_type' => $row->usage_type,
+                    'proxy_type' => $row->proxy_type,
+                    'risk_flags' => array_values(array_filter(array_map('trim', explode(',', (string) $row->risk_flags)))),
+                    'accounts' => ($accountsByIp->get($ip) ?? collect())
+                        ->map(fn ($account): array => $this->accountFromUserRow($account))
+                        ->values()
+                        ->all(),
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     private function multiIpUsers(Collection $userRows): array
