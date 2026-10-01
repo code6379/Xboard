@@ -58,6 +58,13 @@ class Plugin extends AbstractPlugin
             return;
         }
 
+        $ipInfo = $request->attributes->get('subscription_mask_ip_info');
+        $countryCode = strtoupper((string) ($ipInfo['country_code'] ?? ''));
+        if ($countryCode !== '' && $countryCode !== 'CN' && !$this->isAllowlistedIp($request->ip())) {
+            // 国外 IP 已返回伪装域名，不写入泄露分析记录。
+            return;
+        }
+
         $log->forceFill(['completed' => true])->save();
     }
 
@@ -117,14 +124,14 @@ class Plugin extends AbstractPlugin
             return ['reason' => 'IP段', 'value' => $ipRange];
         }
 
-        // 白名单用户或 IP 跳过自动风险规则。
-        if ($this->matchWhitelistEmail($user->email) || $this->isAllowlistedIp($ip)) {
+        // 只有 IP 白名单可以跳过国家归属判断；邮箱白名单不放行国外 IP。
+        if ($this->isAllowlistedIp($ip)) {
             return null;
         }
 
         if ($ipInfo === null) {
             if ($request->attributes->get('subscription_mask_ip_lookup_failed', false)) {
-                return null;
+                return ['reason' => 'IP归属未知', 'value' => $ip];
             }
 
             try {
@@ -135,17 +142,25 @@ class Plugin extends AbstractPlugin
                     'ip' => $ip,
                     'error' => $e->getMessage(),
                 ]);
-                return null;
+                return ['reason' => 'IP归属未知', 'value' => $ip];
             }
         }
 
         // 非大陆ip无法正常访问订阅
         $countryCode = strtoupper((string) ($ipInfo['country_code'] ?? ''));
+        if ($countryCode === '') {
+            return ['reason' => 'IP归属未知', 'value' => $ip];
+        }
         if ($countryCode !== '' && $countryCode !== 'CN') {
             return [
                 'reason' => '非大陆IP',
                 'value' => sprintf('%s|%s|%s', $ipInfo['country'] ?? '', $ipInfo['region'] ?? '', $ipInfo['city'] ?? ''),
             ];
+        }
+
+        // 邮箱白名单仅跳过后续的低流量等自动风险规则。
+        if ($this->matchWhitelistEmail($user->email)) {
+            return null;
         }
 
         if ($this->hasLowTraffic($user)) {
@@ -194,17 +209,23 @@ class Plugin extends AbstractPlugin
     }
 
     /**
-     * 按完整 IPv4 地址精确匹配允许集合，用于放行非大陆 IP。
+     * 按配置的 IP/CIDR 名单匹配允许集合，用于放行非大陆 IP。
      */
     private function isAllowlistedIp(string $ip): bool
     {
         $offlineList = $this->getConfiguredList('allowlist_ips');
         if (empty($offlineList)) {
-            return true;
+            return false;
         }
 
-        if (in_array($ip, $offlineList, true)) {
-            return true;
+        if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+            return false;
+        }
+
+        foreach ($offlineList as $entry) {
+            if (IpUtils::checkIp($ip, $entry)) {
+                return true;
+            }
         }
 
         return false;
