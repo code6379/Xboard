@@ -6,6 +6,7 @@ use App\Models\SubscriptionMaskLog;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Symfony\Component\HttpFoundation\IpUtils;
 
 class MaskAnalysisService
 {
@@ -20,15 +21,34 @@ class MaskAnalysisService
         $page = max(1, (int) ($filters['page'] ?? 1));
 
         $summary = $this->summary($query);
-        $rankings = $this->rankings($query);
+        $blacklistIpRanges = $filters['blacklist_ip_ranges'] ?? [];
+        $blacklistEmails = array_map('strtolower', $filters['blacklist_emails'] ?? []);
+        $rankings = $this->markRankingBlacklistState($this->rankings($query), $blacklistIpRanges, $blacklistEmails);
         $accountEvidence = $this->accountEvidence($query, $rankings['risk_users']);
+        $accountEvidence = array_map(function (array $item) use ($blacklistIpRanges, $blacklistEmails): array {
+            $item['email_blacklisted'] = in_array(strtolower((string) $item['email']), $blacklistEmails, true);
+            $item['email_blacklist_entry'] = $item['email_blacklisted'] ? strtolower((string) $item['email']) : null;
+            $item['ips'] = array_map(function (array $ip) use ($blacklistIpRanges): array {
+                $ip['blacklist_entry'] = $this->findIpBlacklistEntry($ip['ip'] ?? null, $blacklistIpRanges);
+                $ip['is_blacklisted'] = $ip['blacklist_entry'] !== null;
+                return $ip;
+            }, $item['ips'] ?? []);
+            return $item;
+        }, $accountEvidence);
 
         $total = (clone $query)->count();
         $logs = (clone $query)
             ->orderByDesc('id')
             ->forPage($page, $pageSize)
             ->get()
-            ->map(fn (SubscriptionMaskLog $log): array => $this->logRow($log))
+            ->map(function (SubscriptionMaskLog $log) use ($blacklistIpRanges, $blacklistEmails): array {
+                $row = $this->logRow($log);
+                $row['ip_blacklist_entry'] = $this->findIpBlacklistEntry($row['ip'] ?? null, $blacklistIpRanges);
+                $row['ip_blacklisted'] = $row['ip_blacklist_entry'] !== null;
+                $row['email_blacklisted'] = in_array(strtolower((string) $row['email']), $blacklistEmails, true);
+                $row['email_blacklist_entry'] = $row['email_blacklisted'] ? strtolower((string) $row['email']) : null;
+                return $row;
+            })
             ->values()
             ->all();
 
@@ -107,6 +127,53 @@ class MaskAnalysisService
                 ->distinct('ip')
                 ->count('ip'),
         ];
+    }
+
+    /** 给排行记录附加当前插件名单状态，页面无需猜测是否已拉黑。 */
+    private function markRankingBlacklistState(array $rankings, array $ipRanges, array $emails): array
+    {
+        foreach ($rankings as $rankingKey => $rows) {
+            foreach ($rows as $index => $row) {
+                if (isset($row['ip'])) {
+                    $rankings[$rankingKey][$index]['blacklist_entry'] = $this->findIpBlacklistEntry($row['ip'], $ipRanges);
+                    $rankings[$rankingKey][$index]['is_blacklisted'] = $rankings[$rankingKey][$index]['blacklist_entry'] !== null;
+                }
+                if (isset($row['email'])) {
+                    $rankings[$rankingKey][$index]['email_blacklisted'] = in_array(strtolower((string) $row['email']), $emails, true);
+                    $rankings[$rankingKey][$index]['email_blacklist_entry'] = $rankings[$rankingKey][$index]['email_blacklisted']
+                        ? strtolower((string) $row['email'])
+                        : null;
+                }
+                if (isset($row['accounts']) && is_array($row['accounts'])) {
+                    foreach ($row['accounts'] as $accountIndex => $account) {
+                        $email = strtolower((string) ($account['email'] ?? ''));
+                        $rankings[$rankingKey][$index]['accounts'][$accountIndex]['email_blacklisted'] = in_array(
+                            $email,
+                            $emails,
+                            true
+                        );
+                        $rankings[$rankingKey][$index]['accounts'][$accountIndex]['email_blacklist_entry'] = in_array($email, $emails, true) ? $email : null;
+                    }
+                }
+            }
+        }
+
+        return $rankings;
+    }
+
+    private function findIpBlacklistEntry(?string $ip, array $ranges): ?string
+    {
+        if (!$ip) {
+            return null;
+        }
+
+        foreach ($ranges as $range) {
+            if ($ip === $range || IpUtils::checkIp($ip, $range)) {
+                return $range;
+            }
+        }
+
+        return null;
     }
 
     private function rankings(Builder $query): array

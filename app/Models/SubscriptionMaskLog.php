@@ -28,7 +28,7 @@ class SubscriptionMaskLog extends Model
     }
 
     /**
-     * 创建一次订阅伪装请求的基础快照。无论后续判断是否完成，该快照都会在 finally 中入库。
+     * 创建待写入的订阅访问快照，仅在订阅内容成功生成后保存。
      *
      * @param User    $user
      * @param Request $request
@@ -95,7 +95,7 @@ class SubscriptionMaskLog extends Model
     }
 
     /**
-     * 标记本次规则判断已完成，并保存是否替换域名及命中规则。
+     * 标记本次规则判断结果及是否替换域名。
      *
      * @param array{reason: string, value: string}|null $match
      */

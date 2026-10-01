@@ -9,7 +9,7 @@
         *{box-sizing:border-box}body{margin:0}.page{max-width:1280px;margin:0 auto;padding:26px 22px 42px}.top{display:flex;justify-content:space-between;align-items:center;gap:16px}.eyebrow{color:#087f72;font-size:11px;font-weight:800;letter-spacing:.12em}.top h1{margin:5px 0;font-size:25px}.top p{margin:0;color:#687572;font-size:13px}.actions{display:flex;gap:8px}.button{padding:8px 12px;border:1px solid #d6dfdc;border-radius:6px;background:#fff;color:#23322e;font:inherit;font-size:12px;cursor:pointer}.button.primary{border-color:#17403a;background:#17403a;color:#fff}.button:disabled{opacity:.45;cursor:not-allowed}.page-size{height:31px;padding:4px 8px;border:1px solid #d6dfdc;border-radius:5px;background:#fff;color:#30413c;font:inherit;font-size:11px}
         .filters{display:flex;align-items:end;gap:9px;flex-wrap:wrap;margin-top:16px;padding:12px 14px;background:#fff;border:1px solid #e0e7e4;border-radius:8px}.filters label{display:grid;gap:4px;color:#6b7975;font-size:11px}.filters input{width:150px;height:33px;padding:6px 8px;border:1px solid #d9e1de;border-radius:5px;font:inherit;font-size:12px}.filters .wide input{width:195px}.hint{margin:9px 1px 0;color:#75817e;font-size:11px}
         .panel{margin-top:13px;border:1px solid #e0e7e4;border-radius:8px;background:#fff;overflow:hidden}.panel-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 15px;border-bottom:1px solid #e8eeeb}.panel-head h2{margin:0;font-size:15px}.panel-head p{margin:4px 0 0;color:#75817e;font-size:11px}.head-actions{display:flex;align-items:center;gap:8px}.counter{padding:4px 8px;border-radius:12px;background:#edf3f1;color:#55635f;font-size:11px;white-space:nowrap}.rank-tabs{display:flex;gap:5px;overflow:auto;padding:9px 12px 0;border-bottom:1px solid #e6ece9}.rank-tab{flex:none;margin-bottom:-1px;padding:8px 10px;border:1px solid #dce5e1;border-bottom-color:#e6ece9;border-radius:6px 6px 0 0;background:#f8faf9;color:#51615d;font:inherit;font-size:11px;white-space:nowrap;cursor:pointer}.rank-tab.active{border-color:#168075;border-bottom-color:#fff;background:#fff;color:#08766c;font-weight:750}.rank-tab b{margin-left:3px;font-size:10px}
-        .table-wrap{overflow:auto}.table{width:100%;border-collapse:collapse;min-width:760px}.table th,.table td{padding:9px 11px;border-bottom:1px solid #edf1ef;text-align:left;vertical-align:middle}.table th{background:#f8faf9;color:#71807b;font-size:10px;font-weight:750}.table td{font-size:11px}.table tbody tr:hover{background:#f7faf8}.table tbody tr.selected{background:#edf7f4}.account{font-weight:750;color:#24332f}.subtle{display:block;margin-top:3px;color:#83908b;font-size:10px}.pill{display:inline-block;margin:2px 3px 2px 0;padding:3px 7px;border-radius:10px;background:#eef3f1;color:#53635e;font-size:10px;white-space:nowrap}.pill.red{background:#fff0ed;color:#b83d32}.pill.orange{background:#fff4e5;color:#a95d00}.ip{font-family:Consolas,"SFMono-Regular",monospace;font-weight:700;color:#36549b}.row-button{border:0;background:none;padding:0;color:#126d64;font:inherit;font-size:11px;font-weight:700;cursor:pointer}.blacklist-button{margin-top:7px;padding:5px 8px;border:1px solid #edc2bd;border-radius:5px;background:#fff8f7;color:#ad3d32;font:inherit;font-size:10px;font-weight:700;cursor:pointer}.blacklist-button:disabled{border-color:#dce5e1;background:#f3f7f5;color:#54816e;cursor:default}.empty{padding:22px;text-align:center;color:#87928e;font-size:12px}.pager{display:flex;justify-content:flex-end;align-items:center;gap:8px;padding:9px 12px}.pager span{color:#70807a;font-size:11px}
+        .table-wrap{overflow:auto}.table{width:100%;border-collapse:collapse;min-width:760px}.table th,.table td{padding:9px 11px;border-bottom:1px solid #edf1ef;text-align:left;vertical-align:middle}.table th{background:#f8faf9;color:#71807b;font-size:10px;font-weight:750}.table td{font-size:11px}.table tbody tr:hover{background:#f7faf8}.table tbody tr.selected{background:#edf7f4}.account{font-weight:750;color:#24332f}.subtle{display:block;margin-top:3px;color:#83908b;font-size:10px}.pill{display:inline-block;margin:2px 3px 2px 0;padding:3px 7px;border-radius:10px;background:#eef3f1;color:#53635e;font-size:10px;white-space:nowrap}.pill.red{background:#fff0ed;color:#b83d32}.pill.orange{background:#fff4e5;color:#a95d00}.pill.blacklisted{background:#e8f5ed;color:#24734c;font-weight:750}.ip{font-family:Consolas,"SFMono-Regular",monospace;font-weight:700;color:#36549b}.row-button{border:0;background:none;padding:0;color:#126d64;font:inherit;font-size:11px;font-weight:700;cursor:pointer}.blacklist-button{margin-top:7px;padding:5px 8px;border:1px solid #edc2bd;border-radius:5px;background:#fff8f7;color:#ad3d32;font:inherit;font-size:10px;font-weight:700;cursor:pointer}.blacklist-button:disabled{border-color:#dce5e1;background:#f3f7f5;color:#54816e;cursor:default}.empty{padding:22px;text-align:center;color:#87928e;font-size:12px}.pager{display:flex;justify-content:flex-end;align-items:center;gap:8px;padding:9px 12px}.pager span{color:#70807a;font-size:11px}
         .detail-grid{display:grid;grid-template-columns:minmax(210px,.65fr) minmax(0,1.8fr);gap:15px;padding:15px}.detail-summary{padding:13px;border:1px solid #e2e9e6;border-radius:7px;background:#fafcfb}.detail-summary h3{margin:0 0 8px;font-size:14px;overflow-wrap:anywhere}.detail-summary p{margin:5px 0;color:#64726e;font-size:11px;line-height:1.6}.detail-content h3{margin:0 0 8px;font-size:12px}.ip-list,.account-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:7px}.ip-card,.account-card{padding:10px;border:1px solid #e1e8e5;border-radius:6px;background:#fafcfb}.ip-card small,.account-card small{display:block;margin-top:4px;color:#71807b;font-size:10px;line-height:1.45}.timeline-list{display:grid;gap:6px}.timeline-item{display:grid;grid-template-columns:145px minmax(115px,.8fr) minmax(0,1.8fr);gap:10px;padding:8px 10px;border:1px solid #e7ecea;border-radius:5px;font-size:10px}.timeline-item span{color:#70807a}.logs-wrap{padding:11px 15px}.logs-wrap summary{color:#30413c;font-size:12px;font-weight:700;cursor:pointer}
         @media(max-width:760px){.page{padding:18px 12px 30px}.top{align-items:flex-start}.detail-grid{grid-template-columns:1fr}.filters input,.filters .wide input{width:140px}.timeline-item{grid-template-columns:1fr;gap:3px}}@media(max-width:500px){.top{display:block}.actions{margin-top:12px}.filters label,.filters .wide{flex:1 1 42%}.filters input,.filters .wide input{width:100%}.head-actions{gap:5px}}
     </style>
@@ -58,7 +58,7 @@ let page=1,pageSize=10,total=0,payload=null,activeRank='ip_details',selectedInde
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const formatDate=value=>value?new Date(value).toLocaleString('zh-CN',{hour12:false}):'—';
 const pill=(text,kind='')=>'<span class="pill '+kind+'">'+escapeHtml(text)+'</span>';
-const blacklistButton=(type,value)=>'<button class="blacklist-button" type="button" data-blacklist-type="'+type+'" data-blacklist-value="'+escapeHtml(value)+'">拉黑'+(type==='ip'?' IP':'邮箱')+'</button>';
+const blacklistButton=(type,value,blacklisted=false,entry=value)=>!value?'':(blacklisted?'<span class="pill blacklisted">🔒 已拉黑</span><button class="blacklist-button" type="button" data-blacklist-action="remove" data-blacklist-type="'+type+'" data-blacklist-value="'+escapeHtml(entry||value)+'">解除'+(type==='ip'&&String(entry||value).includes('/')?'网段':'拉黑')+'</button>':'<button class="blacklist-button" type="button" data-blacklist-action="add" data-blacklist-type="'+type+'" data-blacklist-value="'+escapeHtml(value)+'">拉黑'+(type==='ip'?' IP':'邮箱')+'</button>');
 const tabInfo={
     ip_details:{label:'IP 明细',summary:'distinct_ips'},
     shared_ips:{label:'共享 IP',summary:'shared_ip_count'},
@@ -103,24 +103,24 @@ function renderMetrics(){
     let headers=[],body='';
     if(['ip_details','shared_ips','high_risk_ips'].includes(activeRank)){
         headers=['IP','风险标签','访问概况','地区 / 运营商','详情'];
-        body=shown.map((row,index)=>'<tr class="'+(selectedIndex===(page-1)*pageSize+index?'selected':'')+'" data-row-index="'+((page-1)*pageSize+index)+'"><td><span class="ip">'+escapeHtml(row.ip)+'</span></td><td>'+(row.is_proxy?pill('代理','red'):'')+(row.risk_flags||[]).map(flag=>pill(flag,'orange')).join('')+(Number(row.max_fraud_score)>=70?pill('高风险 '+row.max_fraud_score,'red'):'')+'</td><td>'+escapeHtml(row.request_count)+' 次 · '+escapeHtml(row.distinct_users)+' 个账号<small class="subtle">最近 '+formatDate(row.latest_seen_at)+'</small></td><td>'+escapeHtml([row.country_code,row.country,row.city].filter(Boolean).join(' · ')||'未知')+'<small class="subtle">'+escapeHtml([row.as_name,row.isp].filter(Boolean).join(' · ')||'未知运营商')+'</small></td><td><button class="row-button" type="button" data-select-index="'+((page-1)*pageSize+index)+'">查看详情</button></td></tr>').join('');
+        body=shown.map((row,index)=>'<tr class="'+(selectedIndex===(page-1)*pageSize+index?'selected':'')+'" data-row-index="'+((page-1)*pageSize+index)+'"><td><span class="ip">'+escapeHtml(row.ip)+'</span>'+(row.is_blacklisted?'<small>'+pill('🔒 IP 已拉黑','blacklisted')+'</small>':'')+'</td><td>'+(row.is_proxy?pill('代理','red'):'')+(row.risk_flags||[]).map(flag=>pill(flag,'orange')).join('')+(Number(row.max_fraud_score)>=70?pill('高风险 '+row.max_fraud_score,'red'):'')+'</td><td>'+escapeHtml(row.request_count)+' 次 · '+escapeHtml(row.distinct_users)+' 个账号<small class="subtle">最近 '+formatDate(row.latest_seen_at)+'</small></td><td>'+escapeHtml([row.country_code,row.country,row.city].filter(Boolean).join(' · ')||'未知')+'<small class="subtle">'+escapeHtml([row.as_name,row.isp].filter(Boolean).join(' · ')||'未知运营商')+'</small></td><td><button class="row-button" type="button" data-select-index="'+((page-1)*pageSize+index)+'">查看详情</button></td></tr>').join('');
     }else if(activeRank==='short_term_spread'){
         headers=['账号','1 小时内 IP','窗口请求','时间范围','详情'];
-        body=shown.map((row,index)=>'<tr class="'+(selectedIndex===(page-1)*pageSize+index?'selected':'')+'" data-row-index="'+((page-1)*pageSize+index)+'"><td><span class="account">'+escapeHtml(row.email)+'</span><small class="subtle">用户 #'+escapeHtml(row.user_id)+'</small></td><td>'+pill(row.spread_ip_count+' 个 IP','red')+'</td><td>'+escapeHtml(row.request_count)+' 次</td><td>'+formatDate(row.window_start)+'<small class="subtle">至 '+formatDate(row.window_end)+'</small></td><td><button class="row-button" type="button" data-select-index="'+((page-1)*pageSize+index)+'">查看详情</button></td></tr>').join('');
+        body=shown.map((row,index)=>'<tr class="'+(selectedIndex===(page-1)*pageSize+index?'selected':'')+'" data-row-index="'+((page-1)*pageSize+index)+'"><td><span class="account">'+escapeHtml(row.email)+'</span>'+(row.email_blacklisted?'<small>'+pill('🔒 邮箱已拉黑','blacklisted')+'</small>':'')+'<small class="subtle">用户 #'+escapeHtml(row.user_id)+'</small></td><td>'+pill(row.spread_ip_count+' 个 IP','red')+'</td><td>'+escapeHtml(row.request_count)+' 次</td><td>'+formatDate(row.window_start)+'<small class="subtle">至 '+formatDate(row.window_end)+'</small></td><td><button class="row-button" type="button" data-select-index="'+((page-1)*pageSize+index)+'">查看详情</button></td></tr>').join('');
     }else if(['multi_ip_users','cross_region_users','proxy_users'].includes(activeRank)){
         headers=['账号','线索数量','请求概况','最近访问','详情'];
         body=shown.map((row,index)=>{
             const count=activeRank==='multi_ip_users'?row.distinct_ips:(activeRank==='cross_region_users'?row.distinct_countries:row.proxy_ips);
             const label=activeRank==='multi_ip_users'?'个 IP':(activeRank==='cross_region_users'?'个地区':'个代理 IP');
             const requests=row.request_count??row.proxy_requests??0;
-            return '<tr class="'+(selectedIndex===(page-1)*pageSize+index?'selected':'')+'" data-row-index="'+((page-1)*pageSize+index)+'"><td><span class="account">'+escapeHtml(row.email)+'</span><small class="subtle">用户 #'+escapeHtml(row.user_id)+'</small></td><td>'+pill(count+' '+label,activeRank==='proxy_users'?'red':'')+'</td><td>'+escapeHtml(requests)+' 次<small class="subtle">'+escapeHtml(row.distinct_ips??0)+' 个 IP</small></td><td>'+formatDate(row.last_seen_at)+'</td><td><button class="row-button" type="button" data-select-index="'+((page-1)*pageSize+index)+'">查看详情</button></td></tr>';
+            return '<tr class="'+(selectedIndex===(page-1)*pageSize+index?'selected':'')+'" data-row-index="'+((page-1)*pageSize+index)+'"><td><span class="account">'+escapeHtml(row.email)+'</span>'+(row.email_blacklisted?'<small>'+pill('🔒 邮箱已拉黑','blacklisted')+'</small>':'')+'<small class="subtle">用户 #'+escapeHtml(row.user_id)+'</small></td><td>'+pill(count+' '+label,activeRank==='proxy_users'?'red':'')+'</td><td>'+escapeHtml(requests)+' 次<small class="subtle">'+escapeHtml(row.distinct_ips??0)+' 个 IP</small></td><td>'+formatDate(row.last_seen_at)+'</td><td><button class="row-button" type="button" data-select-index="'+((page-1)*pageSize+index)+'">查看详情</button></td></tr>';
         }).join('');
     }else if(activeRank==='shared_user_agents'){
         headers=['User-Agent','关联账号','访问 IP','请求数','详情'];
-        body=shown.map((row,index)=>'<tr class="'+(selectedIndex===(page-1)*pageSize+index?'selected':'')+'" data-row-index="'+((page-1)*pageSize+index)+'"><td style="max-width:360px;overflow-wrap:anywhere">'+escapeHtml(row.user_agent)+'</td><td>'+escapeHtml(row.distinct_users)+' 个</td><td>'+escapeHtml(row.distinct_ips)+' 个</td><td>'+escapeHtml(row.request_count)+' 次</td><td><button class="row-button" type="button" data-select-index="'+((page-1)*pageSize+index)+'">查看详情</button></td></tr>').join('');
+        body=shown.map((row,index)=>'<tr class="'+(selectedIndex===(page-1)*pageSize+index?'selected':'')+'" data-row-index="'+((page-1)*pageSize+index)+'"><td style="max-width:360px;overflow-wrap:anywhere">'+escapeHtml(row.user_agent)+'</td><td>'+escapeHtml(row.distinct_users)+' 个'+((row.accounts||[]).some(account=>account.email_blacklisted)?'<small>'+pill('🔒 含已拉黑邮箱','blacklisted')+'</small>':'')+'</td><td>'+escapeHtml(row.distinct_ips)+' 个</td><td>'+escapeHtml(row.request_count)+' 次</td><td><button class="row-button" type="button" data-select-index="'+((page-1)*pageSize+index)+'">查看详情</button></td></tr>').join('');
     }else{
         headers=['时间','账号','访问 IP','地区','风险 / 结果','详情'];
-        body=shown.map((row,index)=>'<tr class="'+(selectedIndex===index?'selected':'')+'"><td>'+formatDate(row.created_at)+'</td><td><span class="account">'+escapeHtml(row.email)+'</span><small class="subtle">用户 #'+escapeHtml(row.user_id)+'</small></td><td><span class="ip">'+escapeHtml(row.ip||'—')+'</span></td><td>'+escapeHtml([row.country_code,row.country,row.city].filter(Boolean).join(' · ')||'—')+'</td><td>'+(row.is_proxy?pill('代理','red'):'')+(row.masked?pill('已伪装'):(row.reason?pill(row.reason,'orange'):'原始域名'))+'<small class="subtle">风险分 '+escapeHtml(row.fraud_score??'—')+'</small></td><td><button class="row-button" type="button" data-select-index="'+index+'">查看详情</button></td></tr>').join('');
+        body=shown.map((row,index)=>'<tr class="'+(selectedIndex===index?'selected':'')+'"><td>'+formatDate(row.created_at)+'</td><td><span class="account">'+escapeHtml(row.email)+'</span>'+(row.email_blacklisted?'<small>'+pill('🔒 邮箱已拉黑','blacklisted')+'</small>':'')+'<small class="subtle">用户 #'+escapeHtml(row.user_id)+'</small></td><td><span class="ip">'+escapeHtml(row.ip||'—')+'</span>'+(row.ip_blacklisted?'<small>'+pill('🔒 IP 已拉黑','blacklisted')+'</small>':'')+'</td><td>'+escapeHtml([row.country_code,row.country,row.city].filter(Boolean).join(' · ')||'—')+'</td><td>'+(row.is_proxy?pill('代理','red'):'')+(row.masked?pill('已伪装'):(row.reason?pill(row.reason,'orange'):'原始域名'))+'<small class="subtle">风险分 '+escapeHtml(row.fraud_score??'—')+'</small></td><td><button class="row-button" type="button" data-select-index="'+index+'">查看详情</button></td></tr>').join('');
     }
     document.querySelector('#rank-head').innerHTML='<tr>'+headers.map(header=>'<th>'+header+'</th>').join('')+'</tr>';
     document.querySelector('#rank-body').innerHTML=body;
@@ -130,12 +130,12 @@ function accountEvidence(userId){return (payload?.account_evidence||[]).find(row
 
 function accountCards(accounts){
     if(!accounts?.length)return '<div class="empty">没有关联账号。</div>';
-    return '<div class="account-list">'+accounts.map(account=>'<article class="account-card"><strong>'+escapeHtml(account.email)+'</strong><small>用户 #'+escapeHtml(account.user_id)+' · '+escapeHtml(account.request_count)+' 次请求</small><small>'+escapeHtml(account.distinct_ips)+' 个 IP · '+escapeHtml(account.distinct_countries)+' 个地区 · '+escapeHtml(account.proxy_requests)+' 次代理访问</small><small>最近 '+formatDate(account.last_seen_at)+'</small>'+blacklistButton('email',account.email)+'</article>').join('')+'</div>';
+    return '<div class="account-list">'+accounts.map(account=>'<article class="account-card"><strong>'+escapeHtml(account.email)+'</strong>'+(account.email_blacklisted?pill('🔒 已拉黑','blacklisted'):'')+'<small>用户 #'+escapeHtml(account.user_id)+' · '+escapeHtml(account.request_count)+' 次请求</small><small>'+escapeHtml(account.distinct_ips)+' 个 IP · '+escapeHtml(account.distinct_countries)+' 个地区 · '+escapeHtml(account.proxy_requests)+' 次代理访问</small><small>最近 '+formatDate(account.last_seen_at)+'</small>'+blacklistButton('email',account.email,account.email_blacklisted,account.email_blacklist_entry||account.email)+'</article>').join('')+'</div>';
 }
 
 function ipCards(ips){
     if(!ips?.length)return '<div class="empty">没有 IP 明细。</div>';
-    return '<div class="ip-list">'+ips.map(ip=>'<article class="ip-card"><strong class="ip">'+escapeHtml(ip.ip)+'</strong>'+(ip.is_proxy?pill('代理','red'):'')+(ip.related_users>1?pill('共享 '+ip.related_users+' 个账号','orange'):'')+'<small>'+escapeHtml([ip.country_code,ip.country,ip.region,ip.city].filter(Boolean).join(' · ')||'地区未知')+'</small><small>'+escapeHtml([ip.as_name,ip.isp].filter(Boolean).join(' · ')||'运营商未知')+'</small><small>'+escapeHtml(ip.request_count)+' 次访问 · 风险分 '+escapeHtml(ip.max_fraud_score??'—')+' · 最近 '+formatDate(ip.last_seen_at)+'</small><a class="row-button" href="https://iplark.com/'+encodeURIComponent(ip.ip)+'" target="_blank" rel="noopener noreferrer">查看 IPLark ↗</a>'+blacklistButton('ip',ip.ip)+'</article>').join('')+'</div>';
+    return '<div class="ip-list">'+ips.map(ip=>'<article class="ip-card"><strong class="ip">'+escapeHtml(ip.ip)+'</strong>'+(ip.is_blacklisted?pill('🔒 已拉黑','blacklisted'):'')+(ip.is_proxy?pill('代理','red'):'')+(ip.related_users>1?pill('共享 '+ip.related_users+' 个账号','orange'):'')+'<small>'+escapeHtml([ip.country_code,ip.country,ip.region,ip.city].filter(Boolean).join(' · ')||'地区未知')+'</small><small>'+escapeHtml([ip.as_name,ip.isp].filter(Boolean).join(' · ')||'运营商未知')+'</small><small>'+escapeHtml(ip.request_count)+' 次访问 · 风险分 '+escapeHtml(ip.max_fraud_score??'—')+' · 最近 '+formatDate(ip.last_seen_at)+'</small><a class="row-button" href="https://iplark.com/'+encodeURIComponent(ip.ip)+'" target="_blank" rel="noopener noreferrer">查看 IPLark ↗</a>'+blacklistButton('ip',ip.ip,ip.is_blacklisted,ip.blacklist_entry||ip.ip)+'</article>').join('')+'</div>';
 }
 
 function renderSelectedDetail(){
@@ -148,11 +148,11 @@ function renderSelectedDetail(){
     if(['ip_details','shared_ips','high_risk_ips'].includes(activeRank)){
         title=row.ip;
         summary=[row.country_code,row.country,row.region,row.city,row.as_name].filter(Boolean).join(' · ');
-        html='<h3>风险标签与访问统计</h3><p>'+((row.risk_flags||[]).map(flag=>pill(flag,'orange')).join('')||(row.is_proxy?pill('代理','red'):'无明显风险标签'))+'</p><p>'+escapeHtml(row.request_count)+' 次访问 · '+escapeHtml(row.distinct_users)+' 个账号 · 最近 '+formatDate(row.latest_seen_at)+'</p>'+blacklistButton('ip',row.ip)+'<h3 style="margin-top:15px">关联账号</h3>'+accountCards(row.accounts);
+        html='<h3>风险标签与访问统计</h3><p>'+((row.risk_flags||[]).map(flag=>pill(flag,'orange')).join('')||(row.is_proxy?pill('代理','red'):'无明显风险标签'))+'</p><p>'+escapeHtml(row.request_count)+' 次访问 · '+escapeHtml(row.distinct_users)+' 个账号 · 最近 '+formatDate(row.latest_seen_at)+'</p>'+blacklistButton('ip',row.ip,row.is_blacklisted,row.blacklist_entry||row.ip)+'<h3 style="margin-top:15px">关联账号</h3>'+accountCards(row.accounts);
     }else if(activeRank==='short_term_spread'){
         title=row.email;summary='用户 #'+row.user_id+' · 1 小时内 '+row.spread_ip_count+' 个 IP · '+row.request_count+' 次请求';
         const evidence=accountEvidence(row.user_id);
-        html='<h3>扩散时间窗</h3><p>'+formatDate(row.window_start)+' 至 '+formatDate(row.window_end)+'</p>'+blacklistButton('email',row.email)+'<h3 style="margin-top:15px">该账号 IP</h3>'+ipCards(evidence?.ips||[]);
+        html='<h3>扩散时间窗</h3><p>'+formatDate(row.window_start)+' 至 '+formatDate(row.window_end)+'</p>'+blacklistButton('email',row.email,row.email_blacklisted,row.email_blacklist_entry||row.email)+'<h3 style="margin-top:15px">该账号 IP</h3>'+ipCards(evidence?.ips||[]);
     }else if(['multi_ip_users','cross_region_users','proxy_users'].includes(activeRank)){
         title=row.email;summary='用户 #'+row.user_id+' · '+row.request_count+' 次请求 · 最近 '+formatDate(row.last_seen_at);
         const evidence=accountEvidence(row.user_id);
@@ -164,10 +164,16 @@ function renderSelectedDetail(){
         html='<h3>关联账号</h3>'+accountCards(row.accounts);
     }else{
         title=row.email;summary=formatDate(row.created_at)+' · 用户 #'+row.user_id;
-        html='<h3>本次访问</h3><p>IP：'+escapeHtml(row.ip||'—')+' · '+escapeHtml([row.country_code,row.country,row.city].filter(Boolean).join(' · ')||'地区未知')+'</p>'+blacklistButton('ip',row.ip||'')+blacklistButton('email',row.email)+'<p>UA：'+escapeHtml(row.user_agent||'—')+'</p><p>规则结果：'+escapeHtml(row.masked?'已伪装':(row.reason||'原始域名'))+' · 风险分 '+escapeHtml(row.fraud_score??'—')+'</p>';
+        html='<h3>本次访问</h3><p>IP：'+escapeHtml(row.ip||'—')+' '+(row.ip_blacklisted?pill('🔒 已拉黑','blacklisted'):'')+' · '+escapeHtml([row.country_code,row.country,row.city].filter(Boolean).join(' · ')||'地区未知')+'</p>'+blacklistButton('ip',row.ip||'',row.ip_blacklisted,row.ip_blacklist_entry||row.ip)+blacklistButton('email',row.email,row.email_blacklisted,row.email_blacklist_entry||row.email)+'<p>UA：'+escapeHtml(row.user_agent||'—')+'</p><p>规则结果：'+escapeHtml(row.masked?'已伪装':(row.reason||'原始域名'))+' · 风险分 '+escapeHtml(row.fraud_score??'—')+'</p>';
     }
     document.querySelector('#detail-heading').textContent=title+' · '+tabInfo[activeRank].label;
     target.innerHTML='<div class="detail-grid"><aside class="detail-summary"><h3>'+escapeHtml(title)+'</h3><p>'+escapeHtml(summary||'—')+'</p></aside><div class="detail-content">'+html+'</div></div>';
+}
+
+function clearSelectedDetail(){
+    selectedIndex=null;
+    document.querySelector('#detail-heading').textContent='排行详情';
+    document.querySelector('#details').innerHTML='<div class="empty">点击排行中的一条记录查看详情。</div>';
 }
 
 function renderLogs(data){
@@ -189,7 +195,7 @@ async function load(){
 
 document.querySelector('#rank-tabs').addEventListener('click',event=>{
     const button=event.target.closest('[data-rank-tab]');if(!button)return;
-    activeRank=button.dataset.rankTab;page=1;selectedIndex=null;renderTabs();load();
+    activeRank=button.dataset.rankTab;page=1;clearSelectedDetail();renderTabs();load();
 });
 document.querySelector('#rank-body').addEventListener('click',event=>{
     const button=event.target.closest('[data-select-index]');if(!button)return;
@@ -197,25 +203,29 @@ document.querySelector('#rank-body').addEventListener('click',event=>{
 });
 document.querySelector('#details').addEventListener('click',async event=>{
     const button=event.target.closest('[data-blacklist-type]');if(!button||button.disabled)return;
-    const type=button.dataset.blacklistType,value=button.dataset.blacklistValue;
+    const type=button.dataset.blacklistType,value=button.dataset.blacklistValue,action=button.dataset.blacklistAction||'add';
     const label=type==='ip'?'IP':'邮箱';
     if(!value){alert('没有可拉黑的'+label);return}
-    if(!confirm('确认将 '+value+' 加入 '+label+' 黑名单？后续匹配到该项时会返回伪装订阅。'))return;
+    const confirmation=action==='remove'
+        ? (type==='ip'&&value.includes('/')?'确认删除网段 '+value+'？该网段内所有 IP 都会解除拉黑。':'确认将 '+value+' 从'+label+'黑名单移除？')
+        : '确认将 '+value+' 加入 '+label+' 黑名单？后续匹配到该项时会返回伪装订阅。';
+    if(!confirm(confirmation))return;
     button.disabled=true;button.textContent='正在写入…';
     try{
-        const response=await fetch(blacklistUrl,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({type,value})});
+        const response=await fetch(blacklistUrl,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({type,action,value})});
         const result=await response.json();
         if(response.status===401){location.href=baseUrl;return}
         if(!response.ok)throw new Error(result.message||'黑名单写入失败');
-        button.textContent=result.data?.already_blacklisted?'已在黑名单':'已加入黑名单';
-    }catch(error){button.disabled=false;button.textContent='拉黑'+label;alert(error.message||'黑名单写入失败')}
+        button.textContent=action==='remove'?(result.data?.removed?'已解除':'规则已不存在'):(result.data?.already_blacklisted?'已在黑名单':'已加入黑名单');
+        await load();
+    }catch(error){button.disabled=false;button.textContent=action==='remove'?'解除拉黑':'拉黑'+label;alert(error.message||'黑名单更新失败')}
 });
-form.addEventListener('submit',event=>{event.preventDefault();page=1;selectedIndex=null;load()});
-document.querySelector('#reset').addEventListener('click',()=>{form.reset();page=1;selectedIndex=null;load()});
+form.addEventListener('submit',event=>{event.preventDefault();page=1;clearSelectedDetail();load()});
+document.querySelector('#reset').addEventListener('click',()=>{form.reset();page=1;clearSelectedDetail();load()});
 document.querySelector('#refresh').addEventListener('click',load);
-document.querySelector('#previous').addEventListener('click',()=>{if(page>1){page--;selectedIndex=null;load()}});
-document.querySelector('#next').addEventListener('click',()=>{if(page*pageSize<countForTab()){page++;selectedIndex=null;load()}});
-document.querySelector('#page-size').addEventListener('change',event=>{pageSize=Number(event.target.value);page=1;selectedIndex=null;load()});
+document.querySelector('#previous').addEventListener('click',()=>{if(page>1){page--;clearSelectedDetail();load()}});
+document.querySelector('#next').addEventListener('click',()=>{if(page*pageSize<countForTab()){page++;clearSelectedDetail();load()}});
+document.querySelector('#page-size').addEventListener('change',event=>{pageSize=Number(event.target.value);page=1;clearSelectedDetail();load()});
 document.querySelector('#logout').addEventListener('click',async()=>{await fetch(baseUrl+'/logout',{method:'POST',credentials:'include'});location.reload()});
 load();
 </script>

@@ -5,7 +5,6 @@ namespace Plugin\SubscriptionMask;
 use App\Models\StatUser;
 use App\Models\SubscriptionMaskLog;
 use App\Models\User;
-use App\Models\Plugin as PluginModel;
 use App\Services\Plugin\AbstractPlugin;
 use App\Utils\IP2Location;
 use Illuminate\Http\Request;
@@ -46,28 +45,24 @@ class Plugin extends AbstractPlugin
         return $this->maskServersForUser($user, $request, $servers);
     }
 
-    /** 订阅成功后更新数据库状态，并执行已有的低流量黑名单规则。 */
+    /** 订阅成功后更新数据库中的完成状态，不向外部发送通知。 */
     public function recordSuccessfulSubscription(array $payload): void
     {
-        $user = $payload['user'] ?? null;
         $request = $payload['request'] ?? null;
-        if (!$user instanceof User || !$request instanceof Request) {
+        if (!$request instanceof Request) {
             return;
         }
 
         $log = $request->attributes->get('subscription_mask_log');
-        if ($log instanceof SubscriptionMaskLog) {
-            $log->forceFill(['completed' => true])->save();
+        if (!$log instanceof SubscriptionMaskLog) {
+            return;
         }
 
-        $match = $request->attributes->get('subscription_mask_match');
-        if (($match['reason'] ?? null) === '低流量') {
-            $this->addLowTrafficUserToBlacklist($user, $request->ip());
-        }
+        $log->forceFill(['completed' => true])->save();
     }
 
     /**
-     * 根据用户近几天的流量决定是否替换订阅节点域名，并记录每次调用。
+     * 根据用户信息判断是否替换订阅节点域名，并准备成功请求的访问记录。
      *
      * @param array<int, array<string, mixed>> $servers
      * @return array<int, array<string, mixed>>
@@ -76,31 +71,27 @@ class Plugin extends AbstractPlugin
     {
         $log = SubscriptionMaskLog::forMaskingRequest($user, $request);
 
+        $ipInfo = null;
         try {
-            $ipInfo = null;
-            try {
-                $ipInfo = $this->getIp2Location()->lookupCached($request->ip());
-                $log->fillIpInfo($ipInfo);
-                $request->attributes->set('subscription_mask_ip_info', $ipInfo);
-            } catch (\Throwable $e) {
-                // 情报服务失败时不阻断订阅，仍保存本次基础访问信息。
-                $request->attributes->set('subscription_mask_ip_lookup_failed', true);
-                Log::warning('订阅 IP 情报查询失败', [
-                    'user_id' => $user->id,
-                    'ip' => $request->ip(),
-                    'error' => $e->getMessage(),
-                ]);
-            }
-
-            $match = $this->getMaskReason($user, $request, $ipInfo);
-            $log->markCompleted($match, $this->getFakeDomain());
-            $request->attributes->set('subscription_mask_match', $match);
-            $request->attributes->set('subscription_mask_log', $log);
-
-            return $match === null ? $servers : $this->replaceServerDomains($servers);
-        } finally {
-            $log->save();
+            $ipInfo = $this->getIp2Location()->lookupCached($request->ip());
+            $log->fillIpInfo($ipInfo);
+            $request->attributes->set('subscription_mask_ip_info', $ipInfo);
+        } catch (\Throwable $e) {
+            // 情报服务失败时不阻断订阅，成功生成后仍会记录基础访问信息。
+            $request->attributes->set('subscription_mask_ip_lookup_failed', true);
+            Log::warning('订阅 IP 情报查询失败', [
+                'user_id' => $user->id,
+                'ip' => $request->ip(),
+                'error' => $e->getMessage(),
+            ]);
         }
+
+        $match = $this->getMaskReason($user, $request, $ipInfo);
+        $log->markCompleted($match, $this->getFakeDomain());
+        $request->attributes->set('subscription_mask_match', $match);
+        $request->attributes->set('subscription_mask_log', $log);
+
+        return $match === null ? $servers : $this->replaceServerDomains($servers);
     }
 
     /**
@@ -268,19 +259,6 @@ class Plugin extends AbstractPlugin
     }
 
     /**
-     * 将连续低流量用户的邮箱和当前访问 IP 追加到插件配置中的黑名单。
-     * 已存在的内容不会重复写入。
-     */
-    private function addLowTrafficUserToBlacklist(User $user, string $ip): void
-    {
-        $this->appendConfiguredListValue('blacklist_emails', strtolower(trim($user->email)));
-
-        if (filter_var($ip, FILTER_VALIDATE_IP)) {
-            $this->appendConfiguredListValue('blacklist_ip_ranges', $ip);
-        }
-    }
-
-    /**
      * 读取插件配置中的多行名单：忽略空行和以 # 开头的注释行。
      *
      * @return array<int, string>
@@ -293,42 +271,6 @@ class Plugin extends AbstractPlugin
             array_map('trim', $lines),
             fn(string $line): bool => $line !== '' && !str_starts_with($line, '#')
         ));
-    }
-
-    /**
-     * 向插件配置中的多行名单追加一条内容，并避免重复写入。
-     */
-    private function appendConfiguredListValue(string $configKey, string $value): void
-    {
-        if ($value === '') {
-            return;
-        }
-
-        $values = $this->getConfiguredList($configKey);
-        if (in_array(strtolower($value), array_map('strtolower', $values), true)) {
-            return;
-        }
-
-        $values[] = $value;
-        $this->updatePluginConfigValue($configKey, implode("\n", $values));
-    }
-
-    private function updatePluginConfigValue(string $key, mixed $value): void
-    {
-        $plugin = PluginModel::query()->where('code', $this->getPluginCode())->first();
-        if (!$plugin) {
-            Log::warning('无法更新订阅域名伪装插件配置', ['config_key' => $key]);
-            return;
-        }
-
-        $config = $plugin->config ? json_decode($plugin->config, true) : [];
-        if (!is_array($config)) {
-            $config = [];
-        }
-
-        $config[$key] = $value;
-        $plugin->update(['config' => json_encode($config)]);
-        $this->setConfig(array_merge($this->getConfig(), [$key => $value]));
     }
 
     /**

@@ -99,6 +99,12 @@ class MaskAnalysisController extends Controller
             ], 422);
         }
 
+        $plugin = Plugin::query()
+            ->where('code', 'subscription_mask')
+            ->where('is_enabled', true)
+            ->first();
+        $pluginConfig = $plugin && $plugin->config ? (json_decode($plugin->config, true) ?: []) : [];
+
         return response()->json($analysis->analyse([
             'start' => $start,
             'end' => $end,
@@ -112,6 +118,8 @@ class MaskAnalysisController extends Controller
             'min_fraud_score' => $validated['min_fraud_score'] ?? null,
             'page' => $validated['page'] ?? 1,
             'page_size' => $validated['page_size'] ?? 10,
+            'blacklist_ip_ranges' => $this->configuredLines($pluginConfig['blacklist_ip_ranges'] ?? ''),
+            'blacklist_emails' => $this->configuredLines($pluginConfig['blacklist_emails'] ?? ''),
         ]));
     }
 
@@ -122,10 +130,16 @@ class MaskAnalysisController extends Controller
         }
 
         $type = $request->validate(['type' => 'required|in:ip,email'])['type'];
-        $valueRule = $type === 'ip' ? 'required|ip|max:128' : 'required|email:rfc|max:64';
-        $value = trim((string) $request->validate(['value' => $valueRule])['value']);
+        $request->validate(['action' => 'nullable|in:add,remove']);
+        $action = $request->input('action', 'add');
+        $value = trim((string) $request->validate(['value' => 'required|string|max:128'])['value']);
         if ($type === 'email') {
+            validator(['value' => $value], ['value' => 'required|email:rfc|max:64'])->validate();
             $value = strtolower($value);
+        } elseif ($action === 'add') {
+            validator(['value' => $value], ['value' => 'required|ip|max:128'])->validate();
+        } elseif (!$this->isIpOrCidr($value)) {
+            return response()->json(['message' => 'IP 或 CIDR 格式无效'], 422);
         }
 
         $plugin = Plugin::query()
@@ -148,12 +162,44 @@ class MaskAnalysisController extends Controller
             fn (string $line): bool => $line !== '' && !str_starts_with($line, '#')
         ));
 
+        if ($action === 'remove') {
+            $removed = false;
+            $remaining = [];
+            foreach ($lines as $line) {
+                $entry = trim($line);
+                if ($entry === '' || str_starts_with($entry, '#')) {
+                    if ($entry !== '') {
+                        $remaining[] = $entry;
+                    }
+                    continue;
+                }
+
+                $matches = $type === 'email'
+                    ? strtolower($entry) === $value
+                    : $entry === $value;
+                if ($matches) {
+                    $removed = true;
+                    continue;
+                }
+                $remaining[] = $entry;
+            }
+
+            if (!$removed) {
+                return response()->json(['data' => ['type' => $type, 'value' => $value, 'removed' => false]]);
+            }
+
+            $config[$configKey] = implode("\n", $remaining);
+            $plugin->update(['config' => json_encode($config, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)]);
+
+            return response()->json(['data' => ['type' => $type, 'value' => $value, 'removed' => true]]);
+        }
+
         foreach ($existing as $entry) {
             $alreadyListed = $type === 'email'
                 ? strtolower($entry) === $value
                 : ($entry === $value || \Symfony\Component\HttpFoundation\IpUtils::checkIp($value, $entry));
             if ($alreadyListed) {
-                return response()->json(['data' => ['type' => $type, 'value' => $value, 'already_blacklisted' => true]]);
+                return response()->json(['data' => ['type' => $type, 'value' => $value, 'already_blacklisted' => true, 'matched_entry' => $entry]]);
             }
         }
 
@@ -161,7 +207,7 @@ class MaskAnalysisController extends Controller
         $config[$configKey] = implode("\n", array_values(array_filter(array_map('trim', $lines), fn (string $line): bool => $line !== '')));
         $plugin->update(['config' => json_encode($config, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)]);
 
-        return response()->json(['data' => ['type' => $type, 'value' => $value, 'already_blacklisted' => false]]);
+        return response()->json(['data' => ['type' => $type, 'value' => $value, 'already_blacklisted' => false, 'matched_entry' => $value]]);
     }
 
     private function authenticated(Request $request): bool
@@ -195,5 +241,28 @@ class MaskAnalysisController extends Controller
         }
 
         return json_decode($plugin->config, true)[$key] ?? null;
+    }
+
+    private function configuredLines(mixed $value): array
+    {
+        $lines = preg_split('/\R/', (string) $value) ?: [];
+        return array_values(array_filter(array_map('trim', $lines), fn (string $line): bool => $line !== '' && !str_starts_with($line, '#')));
+    }
+
+    private function isIpOrCidr(string $value): bool
+    {
+        $parts = explode('/', $value);
+        if (count($parts) > 2 || !filter_var($parts[0], FILTER_VALIDATE_IP)) {
+            return false;
+        }
+        if (!isset($parts[1])) {
+            return true;
+        }
+        if (!ctype_digit($parts[1])) {
+            return false;
+        }
+
+        $maxPrefix = str_contains($parts[0], ':') ? 128 : 32;
+        return (int) $parts[1] <= $maxPrefix;
     }
 }
