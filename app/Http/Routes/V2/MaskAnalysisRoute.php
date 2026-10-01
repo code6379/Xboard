@@ -16,6 +16,7 @@ class MaskAnalysisRoute
             $router->post('mask-analysis/login', [MaskAnalysisController::class, 'login']);
             $router->post('mask-analysis/logout', [MaskAnalysisController::class, 'logout']);
             $router->get('mask-analysis/data', [MaskAnalysisController::class, 'data']);
+            $router->post('mask-analysis/blacklist', [MaskAnalysisController::class, 'blacklist']);
         });
     }
 }

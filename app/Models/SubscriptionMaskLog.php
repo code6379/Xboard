@@ -102,6 +102,7 @@ class SubscriptionMaskLog extends Model
     public function markCompleted(?array $match,string $fakeDomain): void
     {
         $this->fill([
+            'completed'     => true,
             'masked'        => $match !== null,
             'reason'        => $match['reason'] ?? null,
             'matched_value' => $match['value'] ?? null,

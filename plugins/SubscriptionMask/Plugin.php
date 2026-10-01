@@ -2,7 +2,6 @@
 
 namespace Plugin\SubscriptionMask;
 
-use App\Jobs\SendTelegramJob;
 use App\Models\StatUser;
 use App\Models\SubscriptionMaskLog;
 use App\Models\User;
@@ -10,7 +9,6 @@ use App\Models\Plugin as PluginModel;
 use App\Services\Plugin\AbstractPlugin;
 use App\Utils\IP2Location;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\IpUtils;
 
@@ -31,7 +29,7 @@ class Plugin extends AbstractPlugin
         }
 
         $this->filter('client.subscribe.servers', [$this, 'maskSubscribeServers'], 10);
-        $this->listen('client.subscribe.success', [$this, 'notifySuccessfulSubscription'], 10);
+        $this->listen('client.subscribe.success', [$this, 'recordSuccessfulSubscription'], 10);
     }
 
     /**
@@ -48,23 +46,24 @@ class Plugin extends AbstractPlugin
         return $this->maskServersForUser($user, $request, $servers);
     }
 
-    /**
-     * 订阅成功通知
-     * @param array $payload
-     *
-     * @return void
-     */
-    public function notifySuccessfulSubscription(array $payload): void
+    /** 订阅成功后更新数据库状态，并执行已有的低流量黑名单规则。 */
+    public function recordSuccessfulSubscription(array $payload): void
     {
         $user = $payload['user'] ?? null;
         $request = $payload['request'] ?? null;
-        $source = $payload['source'] ?? '普通订阅';
-
         if (!$user instanceof User || !$request instanceof Request) {
             return;
         }
 
-        $this->notifySuccessfulMaskedSubscription($user, $request, $source);
+        $log = $request->attributes->get('subscription_mask_log');
+        if ($log instanceof SubscriptionMaskLog) {
+            $log->forceFill(['completed' => true])->save();
+        }
+
+        $match = $request->attributes->get('subscription_mask_match');
+        if (($match['reason'] ?? null) === '低流量') {
+            $this->addLowTrafficUserToBlacklist($user, $request->ip());
+        }
     }
 
     /**
@@ -78,66 +77,30 @@ class Plugin extends AbstractPlugin
         $log = SubscriptionMaskLog::forMaskingRequest($user, $request);
 
         try {
-            $ipInfo = $this->getIp2Location()->lookupCached($request->ip());
-            $log->fillIpInfo($ipInfo);
-            $match = $this->getMaskReason($user, $request, $ipInfo);
-            if ($match === null) {
-                return $servers;
+            $ipInfo = null;
+            try {
+                $ipInfo = $this->getIp2Location()->lookupCached($request->ip());
+                $log->fillIpInfo($ipInfo);
+                $request->attributes->set('subscription_mask_ip_info', $ipInfo);
+            } catch (\Throwable $e) {
+                // 情报服务失败时不阻断订阅，仍保存本次基础访问信息。
+                $request->attributes->set('subscription_mask_ip_lookup_failed', true);
+                Log::warning('订阅 IP 情报查询失败', [
+                    'user_id' => $user->id,
+                    'ip' => $request->ip(),
+                    'error' => $e->getMessage(),
+                ]);
             }
 
-            $log->markCompleted($match,$this->getFakeDomain());
+            $match = $this->getMaskReason($user, $request, $ipInfo);
+            $log->markCompleted($match, $this->getFakeDomain());
+            $request->attributes->set('subscription_mask_match', $match);
+            $request->attributes->set('subscription_mask_log', $log);
 
-            return $this->replaceServerDomains($servers);
+            return $match === null ? $servers : $this->replaceServerDomains($servers);
         } finally {
             $log->save();
         }
-    }
-
-    /**
-     * 订阅内容成功生成后，记录命中用户并异步通知 Telegram 频道。
-     */
-    public function notifySuccessfulMaskedSubscription(User $user, Request $request, string $source): void
-    {
-        $match = $this->getMaskReason($user, $request);
-        if ($match === null) {
-            return;
-        }
-
-        // 连续低流量确认后，将邮箱和本次访问 IP 固化进离线黑名单。
-        // 后续请求会优先命中名单，不再依赖每日流量统计结果。
-        if ($match['reason'] === '低流量') {
-            $this->addLowTrafficUserToBlacklist($user, $request->ip());
-        }
-
-        $context = [
-            'user_id'           => $user->id,
-            'email'             => $user->email,
-            'ip'                => $request->ip(),
-            'user_agent'        => $request->userAgent(),
-            'source'            => $source,
-            'fake_domain'       => $this->getFakeDomain(),
-            'low_traffic_days'  => $this->getLowTrafficDays(),
-            'low_traffic_limit' => $this->getLowTrafficLimit(),
-            'reason'            => $match['reason'],
-            'matched_value'     => $match['value'],
-        ];
-
-        // 每一次成功返回都会写日志，方便在 storage/logs 中完整追溯。
-        Log::info('低流量用户订阅已返回假域名', $context);
-
-        $chatId = $this->getTelegramAlertChatId();
-        if ($chatId === null) {
-            return;
-        }
-
-        // 客户端会自动刷新订阅；同一用户在间隔期内只推送一次，避免频道刷屏。
-        $cacheKey = 'low_traffic_subscription_alert_' . $user->id;
-        $alertInterval = $this->getAlertInterval();
-        if ($alertInterval === null || !Cache::add($cacheKey, true, $alertInterval)) {
-            return;
-        }
-
-        SendTelegramJob::dispatch($chatId, $this->buildTelegramMessage($user, $request, $source, $match));
     }
 
     /**
@@ -154,27 +117,44 @@ class Plugin extends AbstractPlugin
 
         $ip     = $request->ip();
 
-        // 白名单用户永不替换域名或者ip在允许名单内时
-        if ($this->matchWhitelistEmail($user->email) || $this->isAllowlistedIp($ip)) {
-            return null;
-        }
-
-        $ipInfo = $this->getIp2Location()->lookupCached($ip);
-
-        // 非大陆ip无法正常访问订阅
-        if ($ipInfo['country_code'] !== 'CN') {
-            return [
-                'reason' => '非大陆IP',
-                'value' => sprintf('%s|%s|%s', $ipInfo['country'], $ipInfo['region'], $ipInfo['city']),
-            ];
-        }
-
+        // 分析页明确拉黑的邮箱或 IP 优先于白名单。
         if ($email = $this->matchSuspiciousEmail($user->email)) {
             return ['reason' => '邮箱名单', 'value' => $email];
         }
 
-        if ($ipRange = $this->matchSuspiciousIpRange($request->ip())) {
+        if ($ipRange = $this->matchSuspiciousIpRange($ip)) {
             return ['reason' => 'IP段', 'value' => $ipRange];
+        }
+
+        // 白名单用户或 IP 跳过自动风险规则。
+        if ($this->matchWhitelistEmail($user->email) || $this->isAllowlistedIp($ip)) {
+            return null;
+        }
+
+        if ($ipInfo === null) {
+            if ($request->attributes->get('subscription_mask_ip_lookup_failed', false)) {
+                return null;
+            }
+
+            try {
+                $ipInfo = $this->getIp2Location()->lookupCached($ip);
+            } catch (\Throwable $e) {
+                Log::warning('订阅 IP 风险判断跳过', [
+                    'user_id' => $user->id,
+                    'ip' => $ip,
+                    'error' => $e->getMessage(),
+                ]);
+                return null;
+            }
+        }
+
+        // 非大陆ip无法正常访问订阅
+        $countryCode = strtoupper((string) ($ipInfo['country_code'] ?? ''));
+        if ($countryCode !== '' && $countryCode !== 'CN') {
+            return [
+                'reason' => '非大陆IP',
+                'value' => sprintf('%s|%s|%s', $ipInfo['country'] ?? '', $ipInfo['region'] ?? '', $ipInfo['city'] ?? ''),
+            ];
         }
 
         if ($this->hasLowTraffic($user)) {
@@ -388,43 +368,6 @@ class Plugin extends AbstractPlugin
     {
         $limit = filter_var($this->getConfig('low_traffic_limit'), FILTER_VALIDATE_INT);
         return $limit !== false && $limit > 0 ? $limit : null;
-    }
-
-    /**
-     * 从插件配置读取同一用户的告警间隔。
-     * 缺失或无效时不发送 Telegram 告警。
-     */
-    private function getAlertInterval(): ?int
-    {
-        $interval = filter_var($this->getConfig('low_traffic_alert_interval'), FILTER_VALIDATE_INT);
-        return $interval !== false && $interval >= 60 ? $interval : null;
-    }
-
-    /**
-     * 从插件配置读取 Telegram 频道或群组 ID；缺失或无效时不发送告警。
-     */
-    private function getTelegramAlertChatId(): ?int
-    {
-        $chatId = filter_var($this->getConfig('telegram_alert_chat_id'), FILTER_VALIDATE_INT);
-        return $chatId !== false && $chatId !== 0 ? $chatId : null;
-    }
-
-    /**
-     * 生成频道告警内容；不包含订阅 token、订阅链接和真实节点域名。
-     */
-    private function buildTelegramMessage(User $user, Request $request, string $source, array $match): string
-    {
-        return implode("\n", [
-            '用户 ID: ' . $user->id,
-            '邮箱: ' . $user->email,
-            '请求 IP: ' . $request->ip(),
-            '请求域名: ' . $request->getHost(),
-            '命中原因: ' . $match['reason'],
-            '命中内容: ' . $match['value'],
-            '订阅入口: ' . $source,
-            '客户端: ' . ($request->userAgent() ?: '未知'),
-            '时间: ' . now()->format('Y-m-d H:i:s'),
-        ]);
     }
 
     /**

@@ -9,7 +9,7 @@
         *{box-sizing:border-box}body{margin:0}.page{max-width:1280px;margin:0 auto;padding:26px 22px 42px}.top{display:flex;justify-content:space-between;align-items:center;gap:16px}.eyebrow{color:#087f72;font-size:11px;font-weight:800;letter-spacing:.12em}.top h1{margin:5px 0;font-size:25px}.top p{margin:0;color:#687572;font-size:13px}.actions{display:flex;gap:8px}.button{padding:8px 12px;border:1px solid #d6dfdc;border-radius:6px;background:#fff;color:#23322e;font:inherit;font-size:12px;cursor:pointer}.button.primary{border-color:#17403a;background:#17403a;color:#fff}.button:disabled{opacity:.45;cursor:not-allowed}.page-size{height:31px;padding:4px 8px;border:1px solid #d6dfdc;border-radius:5px;background:#fff;color:#30413c;font:inherit;font-size:11px}
         .filters{display:flex;align-items:end;gap:9px;flex-wrap:wrap;margin-top:16px;padding:12px 14px;background:#fff;border:1px solid #e0e7e4;border-radius:8px}.filters label{display:grid;gap:4px;color:#6b7975;font-size:11px}.filters input{width:150px;height:33px;padding:6px 8px;border:1px solid #d9e1de;border-radius:5px;font:inherit;font-size:12px}.filters .wide input{width:195px}.hint{margin:9px 1px 0;color:#75817e;font-size:11px}
         .panel{margin-top:13px;border:1px solid #e0e7e4;border-radius:8px;background:#fff;overflow:hidden}.panel-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 15px;border-bottom:1px solid #e8eeeb}.panel-head h2{margin:0;font-size:15px}.panel-head p{margin:4px 0 0;color:#75817e;font-size:11px}.head-actions{display:flex;align-items:center;gap:8px}.counter{padding:4px 8px;border-radius:12px;background:#edf3f1;color:#55635f;font-size:11px;white-space:nowrap}.rank-tabs{display:flex;gap:5px;overflow:auto;padding:9px 12px 0;border-bottom:1px solid #e6ece9}.rank-tab{flex:none;margin-bottom:-1px;padding:8px 10px;border:1px solid #dce5e1;border-bottom-color:#e6ece9;border-radius:6px 6px 0 0;background:#f8faf9;color:#51615d;font:inherit;font-size:11px;white-space:nowrap;cursor:pointer}.rank-tab.active{border-color:#168075;border-bottom-color:#fff;background:#fff;color:#08766c;font-weight:750}.rank-tab b{margin-left:3px;font-size:10px}
-        .table-wrap{overflow:auto}.table{width:100%;border-collapse:collapse;min-width:760px}.table th,.table td{padding:9px 11px;border-bottom:1px solid #edf1ef;text-align:left;vertical-align:middle}.table th{background:#f8faf9;color:#71807b;font-size:10px;font-weight:750}.table td{font-size:11px}.table tbody tr:hover{background:#f7faf8}.table tbody tr.selected{background:#edf7f4}.account{font-weight:750;color:#24332f}.subtle{display:block;margin-top:3px;color:#83908b;font-size:10px}.pill{display:inline-block;margin:2px 3px 2px 0;padding:3px 7px;border-radius:10px;background:#eef3f1;color:#53635e;font-size:10px;white-space:nowrap}.pill.red{background:#fff0ed;color:#b83d32}.pill.orange{background:#fff4e5;color:#a95d00}.ip{font-family:Consolas,"SFMono-Regular",monospace;font-weight:700;color:#36549b}.row-button{border:0;background:none;padding:0;color:#126d64;font:inherit;font-size:11px;font-weight:700;cursor:pointer}.empty{padding:22px;text-align:center;color:#87928e;font-size:12px}.pager{display:flex;justify-content:flex-end;align-items:center;gap:8px;padding:9px 12px}.pager span{color:#70807a;font-size:11px}
+        .table-wrap{overflow:auto}.table{width:100%;border-collapse:collapse;min-width:760px}.table th,.table td{padding:9px 11px;border-bottom:1px solid #edf1ef;text-align:left;vertical-align:middle}.table th{background:#f8faf9;color:#71807b;font-size:10px;font-weight:750}.table td{font-size:11px}.table tbody tr:hover{background:#f7faf8}.table tbody tr.selected{background:#edf7f4}.account{font-weight:750;color:#24332f}.subtle{display:block;margin-top:3px;color:#83908b;font-size:10px}.pill{display:inline-block;margin:2px 3px 2px 0;padding:3px 7px;border-radius:10px;background:#eef3f1;color:#53635e;font-size:10px;white-space:nowrap}.pill.red{background:#fff0ed;color:#b83d32}.pill.orange{background:#fff4e5;color:#a95d00}.ip{font-family:Consolas,"SFMono-Regular",monospace;font-weight:700;color:#36549b}.row-button{border:0;background:none;padding:0;color:#126d64;font:inherit;font-size:11px;font-weight:700;cursor:pointer}.blacklist-button{margin-top:7px;padding:5px 8px;border:1px solid #edc2bd;border-radius:5px;background:#fff8f7;color:#ad3d32;font:inherit;font-size:10px;font-weight:700;cursor:pointer}.blacklist-button:disabled{border-color:#dce5e1;background:#f3f7f5;color:#54816e;cursor:default}.empty{padding:22px;text-align:center;color:#87928e;font-size:12px}.pager{display:flex;justify-content:flex-end;align-items:center;gap:8px;padding:9px 12px}.pager span{color:#70807a;font-size:11px}
         .detail-grid{display:grid;grid-template-columns:minmax(210px,.65fr) minmax(0,1.8fr);gap:15px;padding:15px}.detail-summary{padding:13px;border:1px solid #e2e9e6;border-radius:7px;background:#fafcfb}.detail-summary h3{margin:0 0 8px;font-size:14px;overflow-wrap:anywhere}.detail-summary p{margin:5px 0;color:#64726e;font-size:11px;line-height:1.6}.detail-content h3{margin:0 0 8px;font-size:12px}.ip-list,.account-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:7px}.ip-card,.account-card{padding:10px;border:1px solid #e1e8e5;border-radius:6px;background:#fafcfb}.ip-card small,.account-card small{display:block;margin-top:4px;color:#71807b;font-size:10px;line-height:1.45}.timeline-list{display:grid;gap:6px}.timeline-item{display:grid;grid-template-columns:145px minmax(115px,.8fr) minmax(0,1.8fr);gap:10px;padding:8px 10px;border:1px solid #e7ecea;border-radius:5px;font-size:10px}.timeline-item span{color:#70807a}.logs-wrap{padding:11px 15px}.logs-wrap summary{color:#30413c;font-size:12px;font-weight:700;cursor:pointer}
         @media(max-width:760px){.page{padding:18px 12px 30px}.top{align-items:flex-start}.detail-grid{grid-template-columns:1fr}.filters input,.filters .wide input{width:140px}.timeline-item{grid-template-columns:1fr;gap:3px}}@media(max-width:500px){.top{display:block}.actions{margin-top:12px}.filters label,.filters .wide{flex:1 1 42%}.filters input,.filters .wide input{width:100%}.head-actions{gap:5px}}
     </style>
@@ -53,10 +53,12 @@
 const form=document.querySelector('#filters');
 const baseUrl='{{ $analysisBaseUrl }}';
 const dataUrl=baseUrl+'/data';
+const blacklistUrl=baseUrl+'/blacklist';
 let page=1,pageSize=10,total=0,payload=null,activeRank='ip_details',selectedIndex=null;
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const formatDate=value=>value?new Date(value).toLocaleString('zh-CN',{hour12:false}):'—';
 const pill=(text,kind='')=>'<span class="pill '+kind+'">'+escapeHtml(text)+'</span>';
+const blacklistButton=(type,value)=>'<button class="blacklist-button" type="button" data-blacklist-type="'+type+'" data-blacklist-value="'+escapeHtml(value)+'">拉黑'+(type==='ip'?' IP':'邮箱')+'</button>';
 const tabInfo={
     ip_details:{label:'IP 明细',summary:'distinct_ips'},
     shared_ips:{label:'共享 IP',summary:'shared_ip_count'},
@@ -128,12 +130,12 @@ function accountEvidence(userId){return (payload?.account_evidence||[]).find(row
 
 function accountCards(accounts){
     if(!accounts?.length)return '<div class="empty">没有关联账号。</div>';
-    return '<div class="account-list">'+accounts.map(account=>'<article class="account-card"><strong>'+escapeHtml(account.email)+'</strong><small>用户 #'+escapeHtml(account.user_id)+' · '+escapeHtml(account.request_count)+' 次请求</small><small>'+escapeHtml(account.distinct_ips)+' 个 IP · '+escapeHtml(account.distinct_countries)+' 个地区 · '+escapeHtml(account.proxy_requests)+' 次代理访问</small><small>最近 '+formatDate(account.last_seen_at)+'</small></article>').join('')+'</div>';
+    return '<div class="account-list">'+accounts.map(account=>'<article class="account-card"><strong>'+escapeHtml(account.email)+'</strong><small>用户 #'+escapeHtml(account.user_id)+' · '+escapeHtml(account.request_count)+' 次请求</small><small>'+escapeHtml(account.distinct_ips)+' 个 IP · '+escapeHtml(account.distinct_countries)+' 个地区 · '+escapeHtml(account.proxy_requests)+' 次代理访问</small><small>最近 '+formatDate(account.last_seen_at)+'</small>'+blacklistButton('email',account.email)+'</article>').join('')+'</div>';
 }
 
 function ipCards(ips){
     if(!ips?.length)return '<div class="empty">没有 IP 明细。</div>';
-    return '<div class="ip-list">'+ips.map(ip=>'<article class="ip-card"><strong class="ip">'+escapeHtml(ip.ip)+'</strong>'+(ip.is_proxy?pill('代理','red'):'')+(ip.related_users>1?pill('共享 '+ip.related_users+' 个账号','orange'):'')+'<small>'+escapeHtml([ip.country_code,ip.country,ip.region,ip.city].filter(Boolean).join(' · ')||'地区未知')+'</small><small>'+escapeHtml([ip.as_name,ip.isp].filter(Boolean).join(' · ')||'运营商未知')+'</small><small>'+escapeHtml(ip.request_count)+' 次访问 · 风险分 '+escapeHtml(ip.max_fraud_score??'—')+' · 最近 '+formatDate(ip.last_seen_at)+'</small><a class="row-button" href="https://iplark.com/'+encodeURIComponent(ip.ip)+'" target="_blank" rel="noopener noreferrer">查看 IPLark ↗</a></article>').join('')+'</div>';
+    return '<div class="ip-list">'+ips.map(ip=>'<article class="ip-card"><strong class="ip">'+escapeHtml(ip.ip)+'</strong>'+(ip.is_proxy?pill('代理','red'):'')+(ip.related_users>1?pill('共享 '+ip.related_users+' 个账号','orange'):'')+'<small>'+escapeHtml([ip.country_code,ip.country,ip.region,ip.city].filter(Boolean).join(' · ')||'地区未知')+'</small><small>'+escapeHtml([ip.as_name,ip.isp].filter(Boolean).join(' · ')||'运营商未知')+'</small><small>'+escapeHtml(ip.request_count)+' 次访问 · 风险分 '+escapeHtml(ip.max_fraud_score??'—')+' · 最近 '+formatDate(ip.last_seen_at)+'</small><a class="row-button" href="https://iplark.com/'+encodeURIComponent(ip.ip)+'" target="_blank" rel="noopener noreferrer">查看 IPLark ↗</a>'+blacklistButton('ip',ip.ip)+'</article>').join('')+'</div>';
 }
 
 function renderSelectedDetail(){
@@ -146,11 +148,11 @@ function renderSelectedDetail(){
     if(['ip_details','shared_ips','high_risk_ips'].includes(activeRank)){
         title=row.ip;
         summary=[row.country_code,row.country,row.region,row.city,row.as_name].filter(Boolean).join(' · ');
-        html='<h3>风险标签与访问统计</h3><p>'+((row.risk_flags||[]).map(flag=>pill(flag,'orange')).join('')||(row.is_proxy?pill('代理','red'):'无明显风险标签'))+'</p><p>'+escapeHtml(row.request_count)+' 次访问 · '+escapeHtml(row.distinct_users)+' 个账号 · 最近 '+formatDate(row.latest_seen_at)+'</p><h3 style="margin-top:15px">关联账号</h3>'+accountCards(row.accounts);
+        html='<h3>风险标签与访问统计</h3><p>'+((row.risk_flags||[]).map(flag=>pill(flag,'orange')).join('')||(row.is_proxy?pill('代理','red'):'无明显风险标签'))+'</p><p>'+escapeHtml(row.request_count)+' 次访问 · '+escapeHtml(row.distinct_users)+' 个账号 · 最近 '+formatDate(row.latest_seen_at)+'</p>'+blacklistButton('ip',row.ip)+'<h3 style="margin-top:15px">关联账号</h3>'+accountCards(row.accounts);
     }else if(activeRank==='short_term_spread'){
         title=row.email;summary='用户 #'+row.user_id+' · 1 小时内 '+row.spread_ip_count+' 个 IP · '+row.request_count+' 次请求';
         const evidence=accountEvidence(row.user_id);
-        html='<h3>扩散时间窗</h3><p>'+formatDate(row.window_start)+' 至 '+formatDate(row.window_end)+'</p><h3 style="margin-top:15px">该账号 IP</h3>'+ipCards(evidence?.ips||[]);
+        html='<h3>扩散时间窗</h3><p>'+formatDate(row.window_start)+' 至 '+formatDate(row.window_end)+'</p>'+blacklistButton('email',row.email)+'<h3 style="margin-top:15px">该账号 IP</h3>'+ipCards(evidence?.ips||[]);
     }else if(['multi_ip_users','cross_region_users','proxy_users'].includes(activeRank)){
         title=row.email;summary='用户 #'+row.user_id+' · '+row.request_count+' 次请求 · 最近 '+formatDate(row.last_seen_at);
         const evidence=accountEvidence(row.user_id);
@@ -162,7 +164,7 @@ function renderSelectedDetail(){
         html='<h3>关联账号</h3>'+accountCards(row.accounts);
     }else{
         title=row.email;summary=formatDate(row.created_at)+' · 用户 #'+row.user_id;
-        html='<h3>本次访问</h3><p>IP：'+escapeHtml(row.ip||'—')+' · '+escapeHtml([row.country_code,row.country,row.city].filter(Boolean).join(' · ')||'地区未知')+'</p><p>UA：'+escapeHtml(row.user_agent||'—')+'</p><p>规则结果：'+escapeHtml(row.masked?'已伪装':(row.reason||'原始域名'))+' · 风险分 '+escapeHtml(row.fraud_score??'—')+'</p>';
+        html='<h3>本次访问</h3><p>IP：'+escapeHtml(row.ip||'—')+' · '+escapeHtml([row.country_code,row.country,row.city].filter(Boolean).join(' · ')||'地区未知')+'</p>'+blacklistButton('ip',row.ip||'')+blacklistButton('email',row.email)+'<p>UA：'+escapeHtml(row.user_agent||'—')+'</p><p>规则结果：'+escapeHtml(row.masked?'已伪装':(row.reason||'原始域名'))+' · 风险分 '+escapeHtml(row.fraud_score??'—')+'</p>';
     }
     document.querySelector('#detail-heading').textContent=title+' · '+tabInfo[activeRank].label;
     target.innerHTML='<div class="detail-grid"><aside class="detail-summary"><h3>'+escapeHtml(title)+'</h3><p>'+escapeHtml(summary||'—')+'</p></aside><div class="detail-content">'+html+'</div></div>';
@@ -192,6 +194,21 @@ document.querySelector('#rank-tabs').addEventListener('click',event=>{
 document.querySelector('#rank-body').addEventListener('click',event=>{
     const button=event.target.closest('[data-select-index]');if(!button)return;
     selectedIndex=Number(button.dataset.selectIndex);renderMetrics();renderSelectedDetail();
+});
+document.querySelector('#details').addEventListener('click',async event=>{
+    const button=event.target.closest('[data-blacklist-type]');if(!button||button.disabled)return;
+    const type=button.dataset.blacklistType,value=button.dataset.blacklistValue;
+    const label=type==='ip'?'IP':'邮箱';
+    if(!value){alert('没有可拉黑的'+label);return}
+    if(!confirm('确认将 '+value+' 加入 '+label+' 黑名单？后续匹配到该项时会返回伪装订阅。'))return;
+    button.disabled=true;button.textContent='正在写入…';
+    try{
+        const response=await fetch(blacklistUrl,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({type,value})});
+        const result=await response.json();
+        if(response.status===401){location.href=baseUrl;return}
+        if(!response.ok)throw new Error(result.message||'黑名单写入失败');
+        button.textContent=result.data?.already_blacklisted?'已在黑名单':'已加入黑名单';
+    }catch(error){button.disabled=false;button.textContent='拉黑'+label;alert(error.message||'黑名单写入失败')}
 });
 form.addEventListener('submit',event=>{event.preventDefault();page=1;selectedIndex=null;load()});
 document.querySelector('#reset').addEventListener('click',()=>{form.reset();page=1;selectedIndex=null;load()});

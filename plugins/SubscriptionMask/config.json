@@ -2,7 +2,7 @@
     "name": "订阅风控与域名遮蔽",
     "code": "subscription_mask",
     "version": "1.0.0",
-    "description": "基于 IP 归属、代理画像、邮箱与流量名单判定风险用户，命中后仅在订阅输出中遮蔽真实节点域名，并支持自动加黑、Telegram 告警与独立分析后台",
+    "description": "基于 IP 归属、代理画像、邮箱与流量名单判定风险用户，记录订阅访问情报，命中后仅在订阅输出中遮蔽真实节点域名，并支持 IP 和邮箱黑名单",
     "author": "XBoard Team",
     "type": "feature",
     "config": {
@@ -59,18 +59,6 @@
             "default": 5242880,
             "label": "每日流量阈值",
             "description": "每日流量阈值，单位为字节，必须为正整数"
-        },
-        "low_traffic_alert_interval": {
-            "type": "number",
-            "default": 86400,
-            "label": "告警间隔",
-            "description": "同一用户 Telegram 告警间隔，单位为秒，至少 60 秒"
-        },
-        "telegram_alert_chat_id": {
-            "type": "string",
-            "default": "",
-            "label": "Telegram 告警群组 ID",
-            "description": "接收低流量订阅告警的 Telegram 频道或群组 ID"
         },
         "mask_analysis_password": {
             "type": "string",

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\V2;
 
 use App\Http\Controllers\Controller;
+use App\Models\Plugin;
 use App\Services\MaskAnalysisService;
 use Illuminate\Support\Carbon;
 use Illuminate\Http\Request;
@@ -112,6 +113,55 @@ class MaskAnalysisController extends Controller
             'page' => $validated['page'] ?? 1,
             'page_size' => $validated['page_size'] ?? 10,
         ]));
+    }
+
+    public function blacklist(Request $request)
+    {
+        if (!$this->authenticated($request)) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $type = $request->validate(['type' => 'required|in:ip,email'])['type'];
+        $valueRule = $type === 'ip' ? 'required|ip|max:128' : 'required|email:rfc|max:64';
+        $value = trim((string) $request->validate(['value' => $valueRule])['value']);
+        if ($type === 'email') {
+            $value = strtolower($value);
+        }
+
+        $plugin = Plugin::query()
+            ->where('code', 'subscription_mask')
+            ->where('is_enabled', true)
+            ->first();
+        if (!$plugin) {
+            return response()->json(['message' => '订阅风控插件尚未启用'], 409);
+        }
+
+        $config = $plugin->config ? (json_decode($plugin->config, true) ?: []) : [];
+        if (empty($config['enabled']) || trim((string) ($config['fake_domain'] ?? '')) === '') {
+            return response()->json(['message' => '请先启用订阅伪装并配置替换域名'], 409);
+        }
+
+        $configKey = $type === 'ip' ? 'blacklist_ip_ranges' : 'blacklist_emails';
+        $lines = preg_split('/\R/', (string) ($config[$configKey] ?? '')) ?: [];
+        $existing = array_values(array_filter(
+            array_map('trim', $lines),
+            fn (string $line): bool => $line !== '' && !str_starts_with($line, '#')
+        ));
+
+        foreach ($existing as $entry) {
+            $alreadyListed = $type === 'email'
+                ? strtolower($entry) === $value
+                : ($entry === $value || \Symfony\Component\HttpFoundation\IpUtils::checkIp($value, $entry));
+            if ($alreadyListed) {
+                return response()->json(['data' => ['type' => $type, 'value' => $value, 'already_blacklisted' => true]]);
+            }
+        }
+
+        $lines[] = $value;
+        $config[$configKey] = implode("\n", array_values(array_filter(array_map('trim', $lines), fn (string $line): bool => $line !== '')));
+        $plugin->update(['config' => json_encode($config, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)]);
+
+        return response()->json(['data' => ['type' => $type, 'value' => $value, 'already_blacklisted' => false]]);
     }
 
     private function authenticated(Request $request): bool

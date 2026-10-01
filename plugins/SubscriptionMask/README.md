@@ -14,7 +14,4 @@
 | `whitelist_emails`           | 邮箱白名单，每行一个邮箱                                       |
 | `low_traffic_days`           | 低流量统计天数                                                 |
 | `low_traffic_limit`          | 每日流量阈值，单位为字节                                       |
-| `low_traffic_alert_interval` | Telegram 告警间隔，单位为秒                                    |
-| `telegram_alert_chat_id`     | Telegram 告警频道或群组 ID                                     |
-
 所有配置只从插件配置读取，不读取 `.env`。四类名单直接存储在插件配置中，不再使用文件路径和命令行 CRUD；每行一条数据，支持 `#` 注释。
