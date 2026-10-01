@@ -65,62 +65,22 @@ class MaskAnalysisController extends Controller
             ->withoutCookie(config('mask-analysis.cookie_name'));
     }
 
-    public function data(Request $request, MaskAnalysisService $analysis)
+    public function rankings(Request $request, MaskAnalysisService $analysis)
     {
         if (!$this->authenticated($request)) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
-        $validated = $request->validate([
-            'start' => 'nullable|date',
-            'end' => 'nullable|date',
-            'email' => 'nullable|string|max:64',
-            'ip' => 'nullable|string|max:128',
-            'country' => 'nullable|string|size:2',
-            'reason' => 'nullable|string|max:32',
-            'user_agent' => 'nullable|string|max:512',
-            'proxy_only' => 'nullable|boolean',
-            'masked_only' => 'nullable|boolean',
-            'min_fraud_score' => 'nullable|integer|min:0|max:100',
-            'page' => 'nullable|integer|min:1',
-            'page_size' => 'nullable|integer|min:1|max:100',
-        ]);
+        return response()->json($analysis->analyseRankings($this->analysisFilters($request)));
+    }
 
-        $end = isset($validated['end'])
-            ? Carbon::parse($validated['end'])->endOfDay()
-            : now()->endOfDay();
-        $start = isset($validated['start'])
-            ? Carbon::parse($validated['start'])->startOfDay()
-            : $end->copy()->subDays(6)->startOfDay();
-
-        if ($end->lt($start) || $start->diffInDays($end) > 30) {
-            return response()->json([
-                'message' => 'The selected date range must not exceed 31 days.',
-            ], 422);
+    public function logs(Request $request, MaskAnalysisService $analysis)
+    {
+        if (!$this->authenticated($request)) {
+            return response()->json(['message' => 'Unauthorized'], 401);
         }
 
-        $plugin = Plugin::query()
-            ->where('code', 'subscription_mask')
-            ->where('is_enabled', true)
-            ->first();
-        $pluginConfig = $plugin && $plugin->config ? (json_decode($plugin->config, true) ?: []) : [];
-
-        return response()->json($analysis->analyse([
-            'start' => $start,
-            'end' => $end,
-            'email' => $validated['email'] ?? null,
-            'ip' => $validated['ip'] ?? null,
-            'country' => isset($validated['country']) ? strtoupper($validated['country']) : null,
-            'reason' => $validated['reason'] ?? null,
-            'user_agent' => $validated['user_agent'] ?? null,
-            'proxy_only' => $request->boolean('proxy_only'),
-            'masked_only' => $request->boolean('masked_only'),
-            'min_fraud_score' => $validated['min_fraud_score'] ?? null,
-            'page' => $validated['page'] ?? 1,
-            'page_size' => $validated['page_size'] ?? 10,
-            'blacklist_ip_ranges' => $this->configuredLines($pluginConfig['blacklist_ip_ranges'] ?? ''),
-            'blacklist_emails' => $this->configuredLines($pluginConfig['blacklist_emails'] ?? ''),
-        ]));
+        return response()->json($analysis->listAccessLogs($this->analysisFilters($request, true)));
     }
 
     public function blacklist(Request $request)
@@ -264,5 +224,68 @@ class MaskAnalysisController extends Controller
 
         $maxPrefix = str_contains($parts[0], ':') ? 128 : 32;
         return (int) $parts[1] <= $maxPrefix;
+    }
+
+    private function analysisFilters(Request $request, bool $includeLogPagination = false): array
+    {
+        $rules = [
+            'start' => 'nullable|date',
+            'end' => 'nullable|date',
+            'email' => 'nullable|string|max:64',
+            'ip_range' => 'nullable|string|max:128',
+            'ip' => 'nullable|string|max:128',
+            'country' => 'nullable|string|size:2',
+            'reason' => 'nullable|string|max:32',
+            'user_agent' => 'nullable|string|max:512',
+            'proxy_only' => 'nullable|boolean',
+            'masked_only' => 'nullable|boolean',
+            'min_fraud_score' => 'nullable|integer|min:0|max:100',
+        ];
+        if ($includeLogPagination) {
+            $rules['log_page'] = 'nullable|integer|min:1';
+            $rules['log_page_size'] = 'nullable|integer|min:1|max:100';
+        }
+
+        $validated = $request->validate($rules);
+        $end = isset($validated['end']) ? Carbon::parse($validated['end'])->endOfDay() : now()->endOfDay();
+        $start = isset($validated['start']) ? Carbon::parse($validated['start'])->startOfDay() : $end->copy()->subDays(6)->startOfDay();
+
+        if ($end->lt($start) || $start->diffInDays($end) > 30) {
+            abort(response()->json(['message' => 'The selected date range must not exceed 31 days.'], 422));
+        }
+
+        $ipRange = trim((string) ($validated['ip_range'] ?? ''));
+        if ($ipRange !== '' && !$this->isIpOrCidr($ipRange)) {
+            abort(response()->json(['message' => 'IP 或 CIDR 格式无效'], 422));
+        }
+
+        $plugin = $this->getSubscriptionMaskPlugin();
+        $pluginConfig = $plugin && $plugin->config ? (json_decode($plugin->config, true) ?: []) : [];
+
+        return [
+            'start' => $start,
+            'end' => $end,
+            'email' => $validated['email'] ?? null,
+            'ip_range' => $ipRange !== '' ? $ipRange : null,
+            'ip' => $validated['ip'] ?? null,
+            'country' => isset($validated['country']) ? strtoupper($validated['country']) : null,
+            'reason' => $validated['reason'] ?? null,
+            'user_agent' => $validated['user_agent'] ?? null,
+            'proxy_only' => $request->boolean('proxy_only'),
+            'masked_only' => $request->boolean('masked_only'),
+            'min_fraud_score' => $validated['min_fraud_score'] ?? null,
+            'log_page' => $validated['log_page'] ?? 1,
+            'log_page_size' => $validated['log_page_size'] ?? 10,
+            'blacklist_ip_ranges' => $this->configuredLines($pluginConfig['blacklist_ip_ranges'] ?? ''),
+            'blacklist_emails' => $this->configuredLines($pluginConfig['blacklist_emails'] ?? ''),
+        ];
+    }
+
+    private function getSubscriptionMaskPlugin(): ?Plugin
+    {
+        return Plugin::query()
+            ->where('code', 'subscription_mask')
+            ->where('is_enabled', true)
+            ->first();
     }
 }

@@ -14,12 +14,9 @@ class MaskAnalysisService
     private const EVIDENCE_LIMIT = 50;
     private const SPREAD_WINDOW_SECONDS = 3600;
 
-    public function analyse(array $filters): array
+    public function analyseRankings(array $filters): array
     {
         $query = $this->query($filters);
-        $pageSize = max(1, min((int) ($filters['page_size'] ?? 10), 100));
-        $page = max(1, (int) ($filters['page'] ?? 1));
-
         $summary = $this->summary($query);
         $blacklistIpRanges = $filters['blacklist_ip_ranges'] ?? [];
         $blacklistEmails = array_map('strtolower', $filters['blacklist_emails'] ?? []);
@@ -36,10 +33,35 @@ class MaskAnalysisService
             return $item;
         }, $accountEvidence);
 
+        return [
+            'summary' => $summary,
+            'rankings' => $rankings,
+            'account_evidence' => $accountEvidence,
+            'suspicion' => [
+                'shared_ips' => $rankings['shared_ips'],
+                'multi_ip_users' => $rankings['multi_ip_users'],
+                'multi_country_users' => $rankings['multi_country_users'],
+                'high_frequency_pairs' => $rankings['high_frequency_pairs'],
+                'shared_user_agents' => $rankings['shared_user_agents'],
+            ],
+            'suspects' => $rankings['risk_users'],
+        ];
+    }
+
+    public function listAccessLogs(array $filters): array
+    {
+        $query = $this->query($filters);
+        $blacklistIpRanges = $filters['blacklist_ip_ranges'] ?? [];
+        $blacklistEmails = array_map('strtolower', $filters['blacklist_emails'] ?? []);
+        $logPageSize = max(1, min((int) ($filters['log_page_size'] ?? 10), 100));
+        $logPage = max(1, (int) ($filters['log_page'] ?? 1));
         $total = (clone $query)->count();
         $logs = (clone $query)
-            ->orderByDesc('id')
-            ->forPage($page, $pageSize)
+            ->leftJoin('v2_plan as mask_log_plan', 'v2_subscription_mask_logs.plan_id', '=', 'mask_log_plan.id')
+            ->leftJoin('v2_server_group as mask_log_group', 'v2_subscription_mask_logs.group_id', '=', 'mask_log_group.id')
+            ->select('v2_subscription_mask_logs.*', 'mask_log_plan.name as plan_name', 'mask_log_group.name as group_name')
+            ->orderByDesc('v2_subscription_mask_logs.id')
+            ->forPage($logPage, $logPageSize)
             ->get()
             ->map(function (SubscriptionMaskLog $log) use ($blacklistIpRanges, $blacklistEmails): array {
                 $row = $this->logRow($log);
@@ -53,32 +75,35 @@ class MaskAnalysisService
             ->all();
 
         return [
-            'summary' => $summary,
-            'rankings' => $rankings,
-            'account_evidence' => $accountEvidence,
-            'suspicion' => [
-                'shared_ips' => $rankings['shared_ips'],
-                'multi_ip_users' => $rankings['multi_ip_users'],
-                'multi_country_users' => $rankings['multi_country_users'],
-                'high_frequency_pairs' => $rankings['high_frequency_pairs'],
-                'shared_user_agents' => $rankings['shared_user_agents'],
-            ],
-            'suspects' => $rankings['risk_users'],
-            'logs' => [
-                'data' => $logs,
-                'total' => $total,
-                'page' => $page,
-                'page_size' => $pageSize,
-            ],
+            'data' => $logs,
+            'total' => $total,
+            'page' => $logPage,
+            'page_size' => $logPageSize,
         ];
     }
 
     public function query(array $filters): Builder
     {
         return SubscriptionMaskLog::query()
-            ->whereBetween('created_at', [$filters['start'], $filters['end']])
+            ->whereBetween('v2_subscription_mask_logs.created_at', [$filters['start'], $filters['end']])
             ->when($filters['email'] ?? null, fn (Builder $query, string $email) => $query->where('email', 'like', '%' . $email . '%'))
             ->when($filters['ip'] ?? null, fn (Builder $query, string $ip) => $query->where('ip', $ip))
+            ->when($filters['ip_range'] ?? null, function (Builder $query, string $range): Builder {
+                if (filter_var($range, FILTER_VALIDATE_IP)) {
+                    return $query->where('ip', $range);
+                }
+
+                $matchingIps = (clone $query)
+                    ->whereNotNull('ip')
+                    ->select('ip')
+                    ->distinct()
+                    ->pluck('ip')
+                    ->filter(fn (string $ip): bool => IpUtils::checkIp($ip, $range))
+                    ->values()
+                    ->all();
+
+                return $query->whereIn('ip', $matchingIps);
+            })
             ->when($filters['country'] ?? null, fn (Builder $query, string $country) => $query->where('country_code', $country))
             ->when($filters['reason'] ?? null, fn (Builder $query, string $reason) => $query->where('reason', $reason))
             ->when($filters['user_agent'] ?? null, fn (Builder $query, string $userAgent) => $query->where('user_agent', 'like', '%' . $userAgent . '%'))
@@ -679,7 +704,21 @@ class MaskAnalysisService
             'created_at' => $log->created_at,
             'user_id' => (int) $log->user_id,
             'email' => $log->email,
+            'plan_id' => $log->plan_id,
+            'plan_name' => $log->plan_name,
+            'group_id' => $log->group_id,
+            'group_name' => $log->group_name,
+            'transfer_enable' => $log->transfer_enable,
+            'upload' => $log->upload,
+            'download' => $log->download,
+            'speed_limit' => $log->speed_limit,
+            'device_limit' => $log->device_limit,
+            'banned' => (bool) $log->banned,
+            'expired_at' => $log->expired_at,
             'ip' => $log->ip,
+            'forwarded_for' => $log->forwarded_for,
+            'real_ip' => $log->real_ip,
+            'continent' => $log->continent,
             'country_code' => $log->country_code,
             'country' => $log->country,
             'region' => $log->region,
@@ -687,10 +726,25 @@ class MaskAnalysisService
             'isp' => $log->isp,
             'as_name' => $log->as_name,
             'asn' => $log->asn,
+            'ip_domain' => $log->ip_domain,
+            'usage_type' => $log->usage_type,
+            'net_speed' => $log->net_speed,
             'is_proxy' => (bool) $log->is_proxy,
             'proxy_type' => $log->proxy_type,
             'fraud_score' => $log->fraud_score,
+            'threat' => $log->threat,
+            'proxy_provider' => $log->proxy_provider,
+            'proxy_last_seen' => $log->proxy_last_seen,
+            'risk_flags' => array_values(array_filter(array_map('trim', explode(',', (string) $log->risk_flags)))),
+            'route' => $log->route,
+            'request_host' => $log->request_host,
+            'request_method' => $log->request_method,
+            'requested_types' => $log->requested_types,
+            'filter_keyword' => $log->filter_keyword,
+            'referer' => $log->referer,
             'user_agent' => $log->user_agent,
+            'completed' => (bool) $log->completed,
+            'processing_ms' => $log->processing_ms,
             'reason' => $log->reason,
             'masked' => (bool) $log->masked,
             'matched_value' => $log->matched_value,

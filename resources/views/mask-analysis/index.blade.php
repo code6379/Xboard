@@ -9,8 +9,8 @@
         *{box-sizing:border-box}body{margin:0}.page{max-width:1280px;margin:0 auto;padding:26px 22px 42px}.top{display:flex;justify-content:space-between;align-items:center;gap:16px}.eyebrow{color:#087f72;font-size:11px;font-weight:800;letter-spacing:.12em}.top h1{margin:5px 0;font-size:25px}.top p{margin:0;color:#687572;font-size:13px}.actions{display:flex;gap:8px}.button{padding:8px 12px;border:1px solid #d6dfdc;border-radius:6px;background:#fff;color:#23322e;font:inherit;font-size:12px;cursor:pointer}.button.primary{border-color:#17403a;background:#17403a;color:#fff}.button:disabled{opacity:.45;cursor:not-allowed}.page-size{height:31px;padding:4px 8px;border:1px solid #d6dfdc;border-radius:5px;background:#fff;color:#30413c;font:inherit;font-size:11px}
         .filters{display:flex;align-items:end;gap:9px;flex-wrap:wrap;margin-top:16px;padding:12px 14px;background:#fff;border:1px solid #e0e7e4;border-radius:8px}.filters label{display:grid;gap:4px;color:#6b7975;font-size:11px}.filters input{width:150px;height:33px;padding:6px 8px;border:1px solid #d9e1de;border-radius:5px;font:inherit;font-size:12px}.filters .wide input{width:195px}.hint{margin:9px 1px 0;color:#75817e;font-size:11px}
         .panel{margin-top:13px;border:1px solid #e0e7e4;border-radius:8px;background:#fff;overflow:hidden}.panel-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 15px;border-bottom:1px solid #e8eeeb}.panel-head h2{margin:0;font-size:15px}.panel-head p{margin:4px 0 0;color:#75817e;font-size:11px}.head-actions{display:flex;align-items:center;gap:8px}.counter{padding:4px 8px;border-radius:12px;background:#edf3f1;color:#55635f;font-size:11px;white-space:nowrap}.rank-tabs{display:flex;gap:5px;overflow:auto;padding:9px 12px 0;border-bottom:1px solid #e6ece9}.rank-tab{flex:none;margin-bottom:-1px;padding:8px 10px;border:1px solid #dce5e1;border-bottom-color:#e6ece9;border-radius:6px 6px 0 0;background:#f8faf9;color:#51615d;font:inherit;font-size:11px;white-space:nowrap;cursor:pointer}.rank-tab.active{border-color:#168075;border-bottom-color:#fff;background:#fff;color:#08766c;font-weight:750}.rank-tab b{margin-left:3px;font-size:10px}
-        .table-wrap{overflow:auto}.table{width:100%;border-collapse:collapse;min-width:760px}.table th,.table td{padding:9px 11px;border-bottom:1px solid #edf1ef;text-align:left;vertical-align:middle}.table th{background:#f8faf9;color:#71807b;font-size:10px;font-weight:750}.table td{font-size:11px}.table tbody tr:hover{background:#f7faf8}.table tbody tr.selected{background:#edf7f4}.account{font-weight:750;color:#24332f}.subtle{display:block;margin-top:3px;color:#83908b;font-size:10px}.pill{display:inline-block;margin:2px 3px 2px 0;padding:3px 7px;border-radius:10px;background:#eef3f1;color:#53635e;font-size:10px;white-space:nowrap}.pill.red{background:#fff0ed;color:#b83d32}.pill.orange{background:#fff4e5;color:#a95d00}.pill.blacklisted{background:#e8f5ed;color:#24734c;font-weight:750}.ip{font-family:Consolas,"SFMono-Regular",monospace;font-weight:700;color:#36549b}.row-button{border:0;background:none;padding:0;color:#126d64;font:inherit;font-size:11px;font-weight:700;cursor:pointer}.blacklist-button{margin-top:7px;padding:5px 8px;border:1px solid #edc2bd;border-radius:5px;background:#fff8f7;color:#ad3d32;font:inherit;font-size:10px;font-weight:700;cursor:pointer}.blacklist-button:disabled{border-color:#dce5e1;background:#f3f7f5;color:#54816e;cursor:default}.empty{padding:22px;text-align:center;color:#87928e;font-size:12px}.pager{display:flex;justify-content:flex-end;align-items:center;gap:8px;padding:9px 12px}.pager span{color:#70807a;font-size:11px}
-        .detail-grid{display:grid;grid-template-columns:minmax(210px,.65fr) minmax(0,1.8fr);gap:15px;padding:15px}.detail-summary{padding:13px;border:1px solid #e2e9e6;border-radius:7px;background:#fafcfb}.detail-summary h3{margin:0 0 8px;font-size:14px;overflow-wrap:anywhere}.detail-summary p{margin:5px 0;color:#64726e;font-size:11px;line-height:1.6}.detail-content h3{margin:0 0 8px;font-size:12px}.ip-list,.account-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:7px}.ip-card,.account-card{padding:10px;border:1px solid #e1e8e5;border-radius:6px;background:#fafcfb}.ip-card small,.account-card small{display:block;margin-top:4px;color:#71807b;font-size:10px;line-height:1.45}.timeline-list{display:grid;gap:6px}.timeline-item{display:grid;grid-template-columns:145px minmax(115px,.8fr) minmax(0,1.8fr);gap:10px;padding:8px 10px;border:1px solid #e7ecea;border-radius:5px;font-size:10px}.timeline-item span{color:#70807a}.logs-wrap{padding:11px 15px}.logs-wrap summary{color:#30413c;font-size:12px;font-weight:700;cursor:pointer}
+        .table-wrap{overflow:auto}.table{width:100%;border-collapse:collapse;min-width:760px}.table th,.table td{padding:9px 11px;border-bottom:1px solid #edf1ef;text-align:left;vertical-align:middle}.table th{background:#f8faf9;color:#71807b;font-size:10px;font-weight:750}.table td{font-size:11px}.table tbody tr:hover{background:#f7faf8}.table tbody tr.selected{background:#edf7f4}.account{font-weight:750;color:#24332f}.subtle{display:block;margin-top:3px;color:#83908b;font-size:10px}.pill{display:inline-block;margin:2px 3px 2px 0;padding:3px 7px;border-radius:10px;background:#eef3f1;color:#53635e;font-size:10px;white-space:nowrap}.pill.red{background:#fff0ed;color:#b83d32}.pill.orange{background:#fff4e5;color:#a95d00}.pill.blacklisted{background:#e8f5ed;color:#24734c;font-weight:750}.ip{font-family:Consolas,"SFMono-Regular",monospace;font-weight:700;color:#36549b}.iplark-link{color:#36549b;text-decoration:none;font-family:Consolas,"SFMono-Regular",monospace;font-weight:700}.iplark-link:hover{text-decoration:underline}.row-button{border:0;background:none;padding:0;color:#126d64;font:inherit;font-size:11px;font-weight:700;cursor:pointer}.blacklist-button{margin-top:7px;padding:5px 8px;border:1px solid #edc2bd;border-radius:5px;background:#fff8f7;color:#ad3d32;font:inherit;font-size:10px;font-weight:700;cursor:pointer}.blacklist-button:disabled{border-color:#dce5e1;background:#f3f7f5;color:#54816e;cursor:default}.empty{padding:22px;text-align:center;color:#87928e;font-size:12px}.pager{display:flex;justify-content:flex-end;align-items:center;gap:8px;padding:9px 12px}.pager span{color:#70807a;font-size:11px}
+        .detail-grid{display:grid;grid-template-columns:minmax(210px,.65fr) minmax(0,1.8fr);gap:15px;padding:15px}.detail-summary{padding:13px;border:1px solid #e2e9e6;border-radius:7px;background:#fafcfb}.detail-summary h3{margin:0 0 8px;font-size:14px;overflow-wrap:anywhere}.detail-summary p{margin:5px 0;color:#64726e;font-size:11px;line-height:1.6}.detail-content h3{margin:0 0 8px;font-size:12px}.fact-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:7px;margin-bottom:15px}.fact{min-width:0;padding:9px 10px;border:1px solid #e7ecea;border-radius:5px;background:#fafcfb}.fact label{display:block;margin-bottom:4px;color:#82908b;font-size:10px}.fact div{color:#263731;font-size:11px;white-space:pre-wrap;overflow-wrap:anywhere}.ip-list,.account-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:7px}.ip-card,.account-card{padding:10px;border:1px solid #e1e8e5;border-radius:6px;background:#fafcfb}.ip-card small,.account-card small{display:block;margin-top:4px;color:#71807b;font-size:10px;line-height:1.45}.timeline-list{display:grid;gap:6px}.timeline-item{display:grid;grid-template-columns:145px minmax(115px,.8fr) minmax(0,1.8fr);gap:10px;padding:8px 10px;border:1px solid #e7ecea;border-radius:5px;font-size:10px}.timeline-item span{color:#70807a}
         @media(max-width:760px){.page{padding:18px 12px 30px}.top{align-items:flex-start}.detail-grid{grid-template-columns:1fr}.filters input,.filters .wide input{width:140px}.timeline-item{grid-template-columns:1fr;gap:3px}}@media(max-width:500px){.top{display:block}.actions{margin-top:12px}.filters label,.filters .wide{flex:1 1 42%}.filters input,.filters .wide input{width:100%}.head-actions{gap:5px}}
     </style>
 </head>
@@ -25,17 +25,18 @@
         <label>开始日期<input name="start" type="date"></label>
         <label>结束日期<input name="end" type="date"></label>
         <label class="wide">账号关键字<input name="email" maxlength="64" placeholder="按邮箱筛选"></label>
+        <label class="wide">IP 段<input name="ip_range" maxlength="128" placeholder="IP 或 CIDR，如 1.2.3.0/24"></label>
+        <label class="wide">User-Agent<input name="user_agent" maxlength="512" placeholder="按客户端标识筛选"></label>
         <button class="button primary" type="submit">筛选</button>
         <button id="reset" class="button" type="button">重置</button>
     </form>
     <p class="hint">短时扩散表示同一账号在 1 小时内出现至少 3 个 IP；共享网络、移动网络和 VPN 可能造成误报，请结合明细核查。</p>
 
     <section class="panel">
-        <div class="panel-head"><div><h2>线索排行榜</h2><p>切换标签看不同线索，点击排行记录查看详情</p></div><div class="head-actions"><span id="rank-count" class="counter">加载中</span><label for="page-size" class="subtle" style="margin:0;white-space:nowrap">每页</label><select id="page-size" class="page-size" aria-label="每页显示条数"><option value="10" selected>10</option><option value="20">20</option><option value="50">50</option></select></div></div>
+        <div class="panel-head"><div><h2>线索排行榜</h2><p>切换标签看不同线索，点击排行记录查看详情</p></div><div class="head-actions"><span id="rank-count" class="counter">加载中</span><label for="page-size" class="subtle" style="margin:0;white-space:nowrap">每页</label><select id="page-size" class="page-size" aria-label="每页显示条数"><option value="10" selected>10</option><option value="20">20</option><option value="50">50</option></select><button id="previous" class="button" type="button">‹</button><span id="page"></span><button id="next" class="button" type="button">›</button></div></div>
         <nav id="rank-tabs" class="rank-tabs" aria-label="排行线索分类"></nav>
         <div class="table-wrap"><table class="table"><thead id="rank-head"></thead><tbody id="rank-body"></tbody></table></div>
         <div id="rank-empty" class="empty" hidden>当前筛选范围没有此类记录。</div>
-        <div class="pager"><button id="previous" class="button" type="button">上一页</button><span id="page"></span><button id="next" class="button" type="button">下一页</button></div>
     </section>
 
     <section class="panel">
@@ -43,22 +44,37 @@
         <div id="details"><div class="empty">尚未选择排行记录。</div></div>
     </section>
 
-    <details class="panel">
-        <summary class="logs-wrap">原始订阅访问记录</summary>
-        <div class="table-wrap"><table class="table"><thead><tr><th>时间</th><th>账号</th><th>访问 IP</th><th>地区</th><th>网络风险</th><th>规则结果</th></tr></thead><tbody id="logs"></tbody></table></div>
+    <section class="panel">
+        <div class="panel-head"><div><h2>原始订阅访问记录</h2><p id="logs-count">加载中</p></div><div class="head-actions"><label for="log-page-size" class="subtle" style="margin:0;white-space:nowrap">每页</label><select id="log-page-size" class="page-size" aria-label="原始记录每页显示条数"><option value="10" selected>10</option><option value="20">20</option><option value="50">50</option></select><button id="logs-previous" class="button" type="button">‹</button><span id="logs-page"></span><button id="logs-next" class="button" type="button">›</button></div></div>
+        <div class="table-wrap"><table class="table"><thead><tr><th>时间</th><th>账号</th><th>套餐</th><th>分组</th><th>访问 IP</th><th>地区</th><th>网络风险</th><th>规则结果</th><th>详情</th></tr></thead><tbody id="logs"></tbody></table></div>
         <div id="logs-empty" class="empty" hidden>没有符合条件的访问记录。</div>
-    </details>
+        <div id="raw-detail"></div>
+    </section>
 </main>
 <script>
 const form=document.querySelector('#filters');
 const baseUrl='{{ $analysisBaseUrl }}';
-const dataUrl=baseUrl+'/data';
+const rankingsUrl=baseUrl+'/rankings';
+const logsUrl=baseUrl+'/logs';
 const blacklistUrl=baseUrl+'/blacklist';
-let page=1,pageSize=10,total=0,payload=null,activeRank='ip_details',selectedIndex=null;
+let page=1,pageSize=10,logPage=1,logPageSize=10,rankingPayload=null,logsPayload=null,activeRank='ip_details',selectedIndex=null;
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const formatDate=value=>value?new Date(value).toLocaleString('zh-CN',{hour12:false}):'—';
 const pill=(text,kind='')=>'<span class="pill '+kind+'">'+escapeHtml(text)+'</span>';
+const detailFacts=items=>'<div class="fact-grid">'+items.map(([label,value])=>'<div class="fact"><label>'+escapeHtml(label)+'</label><div>'+escapeHtml(value??'—')+'</div></div>').join('')+'</div>';
 const blacklistButton=(type,value,blacklisted=false,entry=value)=>!value?'':(blacklisted?'<span class="pill blacklisted">🔒 已拉黑</span><button class="blacklist-button" type="button" data-blacklist-action="remove" data-blacklist-type="'+type+'" data-blacklist-value="'+escapeHtml(entry||value)+'">解除'+(type==='ip'&&String(entry||value).includes('/')?'网段':'拉黑')+'</button>':'<button class="blacklist-button" type="button" data-blacklist-action="add" data-blacklist-type="'+type+'" data-blacklist-value="'+escapeHtml(value)+'">拉黑'+(type==='ip'?' IP':'邮箱')+'</button>');
+function requestDetailHtml(row){
+    const expiry=row.expired_at?formatDate(new Date(Number(row.expired_at)*1000)):'长期 / 未记录';
+    return '<h3>请求信息</h3>'+detailFacts([
+        ['记录 ID',row.id],['请求时间',formatDate(row.created_at)],['请求方法',row.request_method],['路由',row.route],['请求域名',row.request_host],['来源页 Referer',row.referer],['客户端标记',row.client_flag],['节点类型筛选',row.requested_types],['线路筛选词',row.filter_keyword],['User-Agent',row.user_agent]
+    ])+'<h3>访问 IP 与网络情报</h3>'+(row.ip?'<p><a class="iplark-link" href="https://iplark.com/'+encodeURIComponent(row.ip)+'" target="_blank" rel="noopener noreferrer">'+escapeHtml(row.ip)+' · 在 IPLark 查看详情 ↗</a></p>':'')+detailFacts([
+        ['请求 IP',row.ip],['X-Forwarded-For',row.forwarded_for],['X-Real-IP',row.real_ip],['地理位置',[row.continent,row.country,row.region,row.city].filter(Boolean).join(' · ')],['国家代码',row.country_code],['ISP',row.isp],['ASN',row.asn],['AS / 企业',row.as_name],['IP 域名',row.ip_domain],['使用类型',row.usage_type],['网络速度',row.net_speed],['代理状态',row.is_proxy?'是':'否 / 未知'],['代理类型',row.proxy_type],['代理提供商',row.proxy_provider],['代理最后出现',row.proxy_last_seen],['欺诈评分',row.fraud_score],['风险标记',(row.risk_flags||[]).join('、')],['威胁信息',row.threat]
+    ])+'<h3>账号快照</h3>'+detailFacts([
+        ['用户 ID',row.user_id],['邮箱',row.email],['套餐',row.plan_name],['套餐 ID',row.plan_id],['分组',row.group_name],['分组 ID',row.group_id],['套餐总流量',row.transfer_enable],['已用上传',row.upload],['已用下载',row.download],['限速',row.speed_limit],['设备限制',row.device_limit],['封禁状态',row.banned?'已封禁':'正常'],['到期时间',expiry]
+    ])+'<h3>伪装处理</h3>'+detailFacts([
+        ['处理完成',row.completed?'是':'否'],['是否伪装',row.masked?'已伪装':'未伪装'],['命中原因',row.reason],['命中内容',row.matched_value],['返回伪装域名',row.fake_domain],['处理耗时（毫秒）',row.processing_ms]
+    ])+'<h3>名单操作</h3>'+blacklistButton('ip',row.ip||'',row.ip_blacklisted,row.ip_blacklist_entry||row.ip)+blacklistButton('email',row.email,row.email_blacklisted,row.email_blacklist_entry||row.email);
+}
 const tabInfo={
     ip_details:{label:'IP 明细',summary:'distinct_ips'},
     shared_ips:{label:'共享 IP',summary:'shared_ip_count'},
@@ -72,38 +88,41 @@ const tabInfo={
 };
 
 function rowsForTab(){
-    if(activeRank==='timeline')return payload?.logs?.data||[];
-    return payload?.rankings?.[activeRank]||[];
+    if(activeRank==='timeline')return logsPayload?.data||[];
+    return rankingPayload?.rankings?.[activeRank]||[];
 }
 
 function countForTab(){
-    if(activeRank==='timeline')return payload?.logs?.total||0;
-    return payload?.summary?.[tabInfo[activeRank].summary]??rowsForTab().length;
+    if(activeRank==='timeline')return logsPayload?.total||0;
+    return rankingPayload?.summary?.[tabInfo[activeRank].summary]??rowsForTab().length;
 }
 
 function renderTabs(){
-    const summary=payload?.summary||{};
-    document.querySelector('#rank-tabs').innerHTML=Object.entries(tabInfo).map(([key,info])=>'<button type="button" class="rank-tab '+(key===activeRank?'active':'')+'" data-rank-tab="'+key+'">'+info.label+' <b>· '+escapeHtml(summary[info.summary]??payload?.logs?.total??0)+'</b></button>').join('');
+    const summary=rankingPayload?.summary||{};
+    document.querySelector('#rank-tabs').innerHTML=Object.entries(tabInfo).map(([key,info])=>'<button type="button" class="rank-tab '+(key===activeRank?'active':'')+'" data-rank-tab="'+key+'">'+info.label+' <b>· '+escapeHtml(key==='timeline'?(logsPayload?.total??0):(summary[info.summary]??0))+'</b></button>').join('');
 }
 
 function renderMetrics(){
-    const summary=payload?.summary||{};
-    const info=tabInfo[activeRank];
+    const summary=rankingPayload?.summary||{};
     document.querySelector('#rank-count').textContent=countForTab()+' 条';
+    document.querySelector('#page-size').value=String(activeRank==='timeline'?logPageSize:pageSize);
     const rows=rowsForTab();
+    const currentPage=activeRank==='timeline'?logPage:page;
+    const currentPageSize=activeRank==='timeline'?logPageSize:pageSize;
     const pageTotal=activeRank==='timeline'?countForTab():rows.length;
-    const pageCount=Math.max(1,Math.ceil(pageTotal/pageSize));
-    page=Math.min(page,pageCount);
+    const pageCount=Math.max(1,Math.ceil(pageTotal/currentPageSize));
+    if(activeRank==='timeline')logPage=Math.min(logPage,pageCount);else page=Math.min(page,pageCount);
+    document.querySelector('#page-size').value=String(activeRank==='timeline'?logPageSize:pageSize);
     const shown=activeRank==='timeline'?rows:rows.slice((page-1)*pageSize,page*pageSize);
     document.querySelector('#rank-empty').hidden=shown.length>0;
-    document.querySelector('#previous').disabled=page<=1;
-    document.querySelector('#next').disabled=page>=pageCount;
-    document.querySelector('#page').textContent='第 '+page+' / '+pageCount+' 页';
+    document.querySelector('#previous').disabled=currentPage<=1;
+    document.querySelector('#next').disabled=currentPage>=pageCount;
+    document.querySelector('#page').textContent='第 '+currentPage+' / '+pageCount+' 页';
 
     let headers=[],body='';
     if(['ip_details','shared_ips','high_risk_ips'].includes(activeRank)){
         headers=['IP','风险标签','访问概况','地区 / 运营商','详情'];
-        body=shown.map((row,index)=>'<tr class="'+(selectedIndex===(page-1)*pageSize+index?'selected':'')+'" data-row-index="'+((page-1)*pageSize+index)+'"><td><span class="ip">'+escapeHtml(row.ip)+'</span>'+(row.is_blacklisted?'<small>'+pill('🔒 IP 已拉黑','blacklisted')+'</small>':'')+'</td><td>'+(row.is_proxy?pill('代理','red'):'')+(row.risk_flags||[]).map(flag=>pill(flag,'orange')).join('')+(Number(row.max_fraud_score)>=70?pill('高风险 '+row.max_fraud_score,'red'):'')+'</td><td>'+escapeHtml(row.request_count)+' 次 · '+escapeHtml(row.distinct_users)+' 个账号<small class="subtle">最近 '+formatDate(row.latest_seen_at)+'</small></td><td>'+escapeHtml([row.country_code,row.country,row.city].filter(Boolean).join(' · ')||'未知')+'<small class="subtle">'+escapeHtml([row.as_name,row.isp].filter(Boolean).join(' · ')||'未知运营商')+'</small></td><td><button class="row-button" type="button" data-select-index="'+((page-1)*pageSize+index)+'">查看详情</button></td></tr>').join('');
+        body=shown.map((row,index)=>'<tr class="'+(selectedIndex===(page-1)*pageSize+index?'selected':'')+'" data-row-index="'+((page-1)*pageSize+index)+'"><td><a class="iplark-link" href="https://iplark.com/'+encodeURIComponent(row.ip)+'" target="_blank" rel="noopener noreferrer">'+escapeHtml(row.ip)+' ↗</a>'+(row.is_blacklisted?'<small>'+pill('🔒 IP 已拉黑','blacklisted')+'</small>':'')+'</td><td>'+(row.is_proxy?pill('代理','red'):'')+(row.risk_flags||[]).map(flag=>pill(flag,'orange')).join('')+(Number(row.max_fraud_score)>=70?pill('高风险 '+row.max_fraud_score,'red'):'')+'</td><td>'+escapeHtml(row.request_count)+' 次 · '+escapeHtml(row.distinct_users)+' 个账号<small class="subtle">最近 '+formatDate(row.latest_seen_at)+'</small></td><td>'+escapeHtml([row.country_code,row.country,row.city].filter(Boolean).join(' · ')||'未知')+'<small class="subtle">'+escapeHtml([row.as_name,row.isp].filter(Boolean).join(' · ')||'未知运营商')+'</small></td><td><button class="row-button" type="button" data-select-index="'+((page-1)*pageSize+index)+'">查看详情</button></td></tr>').join('');
     }else if(activeRank==='short_term_spread'){
         headers=['账号','1 小时内 IP','窗口请求','时间范围','详情'];
         body=shown.map((row,index)=>'<tr class="'+(selectedIndex===(page-1)*pageSize+index?'selected':'')+'" data-row-index="'+((page-1)*pageSize+index)+'"><td><span class="account">'+escapeHtml(row.email)+'</span>'+(row.email_blacklisted?'<small>'+pill('🔒 邮箱已拉黑','blacklisted')+'</small>':'')+'<small class="subtle">用户 #'+escapeHtml(row.user_id)+'</small></td><td>'+pill(row.spread_ip_count+' 个 IP','red')+'</td><td>'+escapeHtml(row.request_count)+' 次</td><td>'+formatDate(row.window_start)+'<small class="subtle">至 '+formatDate(row.window_end)+'</small></td><td><button class="row-button" type="button" data-select-index="'+((page-1)*pageSize+index)+'">查看详情</button></td></tr>').join('');
@@ -126,7 +145,7 @@ function renderMetrics(){
     document.querySelector('#rank-body').innerHTML=body;
 }
 
-function accountEvidence(userId){return (payload?.account_evidence||[]).find(row=>Number(row.user_id)===Number(userId))}
+function accountEvidence(userId){return (rankingPayload?.account_evidence||[]).find(row=>Number(row.user_id)===Number(userId))}
 
 function accountCards(accounts){
     if(!accounts?.length)return '<div class="empty">没有关联账号。</div>';
@@ -164,7 +183,7 @@ function renderSelectedDetail(){
         html='<h3>关联账号</h3>'+accountCards(row.accounts);
     }else{
         title=row.email;summary=formatDate(row.created_at)+' · 用户 #'+row.user_id;
-        html='<h3>本次访问</h3><p>IP：'+escapeHtml(row.ip||'—')+' '+(row.ip_blacklisted?pill('🔒 已拉黑','blacklisted'):'')+' · '+escapeHtml([row.country_code,row.country,row.city].filter(Boolean).join(' · ')||'地区未知')+'</p>'+blacklistButton('ip',row.ip||'',row.ip_blacklisted,row.ip_blacklist_entry||row.ip)+blacklistButton('email',row.email,row.email_blacklisted,row.email_blacklist_entry||row.email)+'<p>UA：'+escapeHtml(row.user_agent||'—')+'</p><p>规则结果：'+escapeHtml(row.masked?'已伪装':(row.reason||'原始域名'))+' · 风险分 '+escapeHtml(row.fraud_score??'—')+'</p>';
+        html=requestDetailHtml(row);
     }
     document.querySelector('#detail-heading').textContent=title+' · '+tabInfo[activeRank].label;
     target.innerHTML='<div class="detail-grid"><aside class="detail-summary"><h3>'+escapeHtml(title)+'</h3><p>'+escapeHtml(summary||'—')+'</p></aside><div class="detail-content">'+html+'</div></div>';
@@ -178,28 +197,57 @@ function clearSelectedDetail(){
 
 function renderLogs(data){
     const rows=data.data||[];
+    logPage=data.page||logPage;
+    logPageSize=data.page_size||logPageSize;
+    document.querySelector('#logs-count').textContent='共 '+(data.total||0)+' 条记录';
+    document.querySelector('#logs-page').textContent='第 '+logPage+' / '+Math.max(1,Math.ceil((data.total||0)/logPageSize))+' 页';
+    document.querySelector('#logs-previous').disabled=logPage<=1;
+    document.querySelector('#logs-next').disabled=logPage*logPageSize>=(data.total||0);
+    document.querySelector('#log-page-size').value=String(logPageSize);
     document.querySelector('#logs-empty').hidden=rows.length>0;
-    document.querySelector('#logs').innerHTML=rows.map(row=>'<tr><td>'+formatDate(row.created_at)+'</td><td>'+escapeHtml(row.email)+'<small class="subtle">用户 #'+escapeHtml(row.user_id)+'</small></td><td><span class="ip">'+escapeHtml(row.ip||'—')+'</span></td><td>'+escapeHtml([row.country_code,row.country,row.city].filter(Boolean).join(' · ')||'—')+'</td><td>'+(row.is_proxy?pill('代理','red'):'—')+'<small class="subtle">风险分 '+escapeHtml(row.fraud_score??'—')+'</small></td><td>'+(row.masked?pill('已伪装'):(row.reason?pill(row.reason,'orange'):'原始域名'))+'</td></tr>').join('');
+    document.querySelector('#raw-detail').innerHTML='';
+    document.querySelector('#logs').innerHTML=rows.map((row,index)=>'<tr><td>'+formatDate(row.created_at)+'</td><td>'+escapeHtml(row.email)+'<small class="subtle">用户 #'+escapeHtml(row.user_id)+'</small></td><td>'+escapeHtml(row.plan_name||'—')+'</td><td>'+escapeHtml(row.group_name||'—')+'</td><td>'+(row.ip?'<a class="iplark-link" href="https://iplark.com/'+encodeURIComponent(row.ip)+'" target="_blank" rel="noopener noreferrer">'+escapeHtml(row.ip)+' ↗</a>':'—')+'</td><td>'+escapeHtml([row.country_code,row.country,row.city].filter(Boolean).join(' · ')||'—')+'</td><td>'+(row.is_proxy?pill('代理','red'):'—')+'<small class="subtle">风险分 '+escapeHtml(row.fraud_score??'—')+'</small></td><td>'+(row.masked?pill('已伪装'):(row.reason?pill(row.reason,'orange'):'原始域名'))+'</td><td><button class="row-button" type="button" data-log-detail="'+index+'">详情</button></td></tr>').join('');
 }
 
-async function load(){
-    const query=new URLSearchParams(new FormData(form));query.set('page',page);query.set('page_size',pageSize);
+async function loadRankings(){
+    const query=new URLSearchParams(new FormData(form));
     document.querySelector('#rank-body').innerHTML='<tr><td colspan="6" class="empty">正在加载排行…</td></tr>';
     try{
-        const response=await fetch(dataUrl+'?'+query,{credentials:'include'});
+        const response=await fetch(rankingsUrl+'?'+query,{credentials:'include'});
         if(response.status===401){location.href=baseUrl;return}
         const result=await response.json();if(!response.ok)throw new Error(result.message||'读取失败');
-        payload=result;renderTabs();renderMetrics();renderLogs(result.logs||{data:[]});renderSelectedDetail();
-    }catch(error){document.querySelector('#rank-body').innerHTML='<tr><td colspan="6" class="empty">'+escapeHtml(error.message||'排行加载失败')+'</td></tr>';document.querySelector('#details').innerHTML=''}
+        rankingPayload=result;
+        return true;
+    }catch(error){document.querySelector('#rank-body').innerHTML='<tr><td colspan="6" class="empty">'+escapeHtml(error.message||'排行加载失败')+'</td></tr>';return false}
+}
+
+async function loadLogs(){
+    const query=new URLSearchParams(new FormData(form));query.set('log_page',logPage);query.set('log_page_size',logPageSize);
+    try{
+        const response=await fetch(logsUrl+'?'+query,{credentials:'include'});
+        if(response.status===401){location.href=baseUrl;return false}
+        const result=await response.json();if(!response.ok)throw new Error(result.message||'读取访问记录失败');
+        logsPayload=result;renderLogs(result);return true;
+    }catch(error){document.querySelector('#logs').innerHTML='<tr><td colspan="9" class="empty">'+escapeHtml(error.message||'访问记录读取失败')+'</td></tr>';return false}
+}
+
+async function loadAll(){
+    await Promise.all([loadRankings(),loadLogs()]);
+    renderTabs();renderMetrics();renderSelectedDetail();
 }
 
 document.querySelector('#rank-tabs').addEventListener('click',event=>{
     const button=event.target.closest('[data-rank-tab]');if(!button)return;
-    activeRank=button.dataset.rankTab;page=1;clearSelectedDetail();renderTabs();load();
+    activeRank=button.dataset.rankTab;page=1;clearSelectedDetail();renderTabs();renderMetrics();renderSelectedDetail();
 });
 document.querySelector('#rank-body').addEventListener('click',event=>{
     const button=event.target.closest('[data-select-index]');if(!button)return;
     selectedIndex=Number(button.dataset.selectIndex);renderMetrics();renderSelectedDetail();
+});
+document.querySelector('#logs').addEventListener('click',event=>{
+    const button=event.target.closest('[data-log-detail]');if(!button)return;
+    const row=logsPayload?.data?.[Number(button.dataset.logDetail)];if(!row)return;
+    document.querySelector('#raw-detail').innerHTML='<div class="detail-grid"><aside class="detail-summary"><h3>'+escapeHtml(row.email)+'</h3><p>用户 #'+escapeHtml(row.user_id)+' · '+formatDate(row.created_at)+'</p></aside><div class="detail-content">'+requestDetailHtml(row)+'</div></div>';
 });
 document.querySelector('#details').addEventListener('click',async event=>{
     const button=event.target.closest('[data-blacklist-type]');if(!button||button.disabled)return;
@@ -217,17 +265,20 @@ document.querySelector('#details').addEventListener('click',async event=>{
         if(response.status===401){location.href=baseUrl;return}
         if(!response.ok)throw new Error(result.message||'黑名单写入失败');
         button.textContent=action==='remove'?(result.data?.removed?'已解除':'规则已不存在'):(result.data?.already_blacklisted?'已在黑名单':'已加入黑名单');
-        await load();
+        await loadAll();
     }catch(error){button.disabled=false;button.textContent=action==='remove'?'解除拉黑':'拉黑'+label;alert(error.message||'黑名单更新失败')}
 });
-form.addEventListener('submit',event=>{event.preventDefault();page=1;clearSelectedDetail();load()});
-document.querySelector('#reset').addEventListener('click',()=>{form.reset();page=1;clearSelectedDetail();load()});
-document.querySelector('#refresh').addEventListener('click',load);
-document.querySelector('#previous').addEventListener('click',()=>{if(page>1){page--;clearSelectedDetail();load()}});
-document.querySelector('#next').addEventListener('click',()=>{if(page*pageSize<countForTab()){page++;clearSelectedDetail();load()}});
-document.querySelector('#page-size').addEventListener('change',event=>{pageSize=Number(event.target.value);page=1;clearSelectedDetail();load()});
+form.addEventListener('submit',event=>{event.preventDefault();page=1;logPage=1;clearSelectedDetail();loadAll()});
+document.querySelector('#reset').addEventListener('click',()=>{form.reset();page=1;logPage=1;clearSelectedDetail();loadAll()});
+document.querySelector('#refresh').addEventListener('click',loadAll);
+document.querySelector('#previous').addEventListener('click',()=>{if(activeRank==='timeline'){if(logPage>1){logPage--;clearSelectedDetail();loadLogs().then(()=>{renderTabs();renderMetrics();renderSelectedDetail()})}}else if(page>1){page--;clearSelectedDetail();renderMetrics()}});
+document.querySelector('#next').addEventListener('click',()=>{if(activeRank==='timeline'){if(logPage*logPageSize<countForTab()){logPage++;clearSelectedDetail();loadLogs().then(()=>{renderTabs();renderMetrics();renderSelectedDetail()})}}else if(page*pageSize<rowsForTab().length){page++;clearSelectedDetail();renderMetrics()}});
+document.querySelector('#page-size').addEventListener('change',event=>{pageSize=Number(event.target.value);page=1;clearSelectedDetail();if(activeRank==='timeline'){logPageSize=pageSize;logPage=1;document.querySelector('#log-page-size').value=String(logPageSize);loadLogs().then(()=>{renderTabs();renderMetrics();renderSelectedDetail()})}else renderMetrics()});
+document.querySelector('#logs-previous').addEventListener('click',()=>{if(logPage>1){logPage--;clearSelectedDetail();loadLogs().then(()=>{renderTabs();renderMetrics();renderSelectedDetail()})}});
+document.querySelector('#logs-next').addEventListener('click',()=>{if(logPage*logPageSize<(logsPayload?.total||0)){logPage++;clearSelectedDetail();loadLogs().then(()=>{renderTabs();renderMetrics();renderSelectedDetail()})}});
+document.querySelector('#log-page-size').addEventListener('change',event=>{logPageSize=Number(event.target.value);logPage=1;clearSelectedDetail();if(activeRank==='timeline'){pageSize=logPageSize;document.querySelector('#page-size').value=String(pageSize)}loadLogs().then(()=>{renderTabs();renderMetrics();renderSelectedDetail()})});
 document.querySelector('#logout').addEventListener('click',async()=>{await fetch(baseUrl+'/logout',{method:'POST',credentials:'include'});location.reload()});
-load();
+loadAll();
 </script>
 </body>
 </html>
