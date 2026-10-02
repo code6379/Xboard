@@ -20,7 +20,7 @@ class MaskAnalysisService
         $summary = $this->summary($query);
         $blacklistIpRanges = $filters['blacklist_ip_ranges'] ?? [];
         $blacklistEmails = array_map('strtolower', $filters['blacklist_emails'] ?? []);
-        $rankings = $this->markRankingBlacklistState($this->rankings($query), $blacklistIpRanges, $blacklistEmails);
+        $rankings = $this->markRankingBlacklistState($this->attachAccountPlans($this->rankings($query)), $blacklistIpRanges, $blacklistEmails);
         $accountEvidence = $this->accountEvidence($query, $rankings['risk_users']);
         $accountEvidence = array_map(function (array $item) use ($blacklistIpRanges, $blacklistEmails): array {
             $item['email_blacklisted'] = in_array(strtolower((string) $item['email']), $blacklistEmails, true);
@@ -35,6 +35,7 @@ class MaskAnalysisService
 
         return [
             'summary' => $summary,
+            'previous_summary' => $this->previousSummary($filters),
             'rankings' => $rankings,
             'account_evidence' => $accountEvidence,
             'suspicion' => [
@@ -79,6 +80,69 @@ class MaskAnalysisService
             'total' => $total,
             'page' => $logPage,
             'page_size' => $logPageSize,
+        ];
+    }
+
+    /** 单独查询所选账号的访问 IP，不依赖风险榜的账号或 IP 数量上限。 */
+    public function listAccountIps(int $userId, array $filters, int $page = 1, int $pageSize = 10): array
+    {
+        $query = SubscriptionMaskLog::query()
+            ->whereBetween('created_at', [$filters['start'], $filters['end']])
+            ->where('user_id', $userId);
+        $latest = (clone $query)->orderByDesc('id')->first();
+        $profile = \App\Models\User::query()
+            ->leftJoin('v2_plan as account_plan', 'v2_user.plan_id', '=', 'account_plan.id')
+            ->where('v2_user.id', $userId)
+            ->select('v2_user.email', 'account_plan.name as plan_name')
+            ->first();
+        $email = $latest?->email ?? $profile?->email;
+        $emails = array_map('strtolower', $filters['blacklist_emails'] ?? []);
+        $emailBlacklisted = in_array(strtolower((string) $email), $emails, true);
+        $ipRanges = $filters['blacklist_ip_ranges'] ?? [];
+        $total = (clone $query)->whereNotNull('ip')->distinct('ip')->count('ip');
+        $pageSize = in_array($pageSize, [10, 20, 50], true) ? $pageSize : 10;
+        $page = min(max(1, $page), max(1, (int) ceil($total / $pageSize)));
+        $ips = (clone $query)
+            ->whereNotNull('ip')
+            ->selectRaw('ip, COUNT(*) AS request_count, MIN(created_at) AS first_seen_at, MAX(created_at) AS last_seen_at, MAX(country) AS country, MAX(region) AS region, MAX(city) AS city, MAX(fraud_score) AS max_fraud_score, MAX(CASE WHEN is_proxy = 1 THEN 1 ELSE 0 END) AS is_proxy')
+            ->groupBy('ip')
+            ->orderByDesc('request_count')
+            ->orderByDesc('last_seen_at')
+            ->orderBy('ip')
+            ->forPage($page, $pageSize)
+            ->get()
+            ->map(function ($row) use ($ipRanges): array {
+                $entry = $this->findIpBlacklistEntry($row->ip, $ipRanges);
+                return [
+                    'ip' => (string) $row->ip,
+                    'request_count' => (int) $row->request_count,
+                    'country' => $row->country,
+                    'region' => $row->region,
+                    'city' => $row->city,
+                    'is_proxy' => (bool) $row->is_proxy,
+                    'max_fraud_score' => $row->max_fraud_score !== null ? (int) $row->max_fraud_score : null,
+                    'first_seen_at' => $row->first_seen_at,
+                    'last_seen_at' => $row->last_seen_at,
+                    'is_blacklisted' => $entry !== null,
+                    'blacklist_entry' => $entry,
+                ];
+            })->all();
+
+        return [
+            'account' => [
+                'user_id' => $userId,
+                'email' => $email,
+                'plan_name' => $profile?->plan_name,
+                'email_blacklisted' => $emailBlacklisted,
+                'email_blacklist_entry' => $emailBlacklisted ? strtolower((string) $email) : null,
+            ],
+            'request_count' => (clone $query)->count(),
+            'start' => Carbon::parse($filters['start'])->toDateString(),
+            'end' => Carbon::parse($filters['end'])->toDateString(),
+            'data' => $ips,
+            'total' => $total,
+            'page' => $page,
+            'page_size' => $pageSize,
         ];
     }
 
@@ -152,6 +216,53 @@ class MaskAnalysisService
                 ->distinct('ip')
                 ->count('ip'),
         ];
+    }
+
+    /** 按相邻的同长度时间段计算概览对比，页面不使用示意百分比。 */
+    private function previousSummary(array $filters): array
+    {
+        $start = Carbon::parse($filters['start'])->startOfDay();
+        $days = (int) $start->diffInDays(Carbon::parse($filters['end'])->startOfDay()) + 1;
+        $previousFilters = array_replace($filters, [
+            'start' => $start->copy()->subDays($days),
+            'end' => $start->copy()->subSecond(),
+        ]);
+        $query = $this->query($previousFilters);
+
+        return [
+            'total_requests' => (clone $query)->count(),
+            'distinct_users' => (clone $query)->distinct('user_id')->count('user_id'),
+            'distinct_ips' => (clone $query)->whereNotNull('ip')->distinct('ip')->count('ip'),
+            'high_risk_ip_count' => (clone $query)->whereNotNull('ip')->where('fraud_score', '>=', 70)->distinct('ip')->count('ip'),
+        ];
+    }
+
+    /** 一次查询补齐关联账号的套餐，供详情表格显示。 */
+    private function attachAccountPlans(array $rankings): array
+    {
+        $userIds = [];
+        foreach ($rankings as $rows) {
+            foreach ($rows as $row) {
+                foreach ($row['accounts'] ?? [] as $account) {
+                    $userIds[] = (int) $account['user_id'];
+                }
+            }
+        }
+        $plans = \App\Models\User::query()
+            ->leftJoin('v2_plan as analysis_plan', 'v2_user.plan_id', '=', 'analysis_plan.id')
+            ->whereIn('v2_user.id', array_values(array_unique($userIds)))
+            ->select('v2_user.id', 'analysis_plan.name as plan_name')
+            ->get()
+            ->keyBy('id');
+        foreach ($rankings as $key => $rows) {
+            foreach ($rows as $index => $row) {
+                foreach ($row['accounts'] ?? [] as $accountIndex => $account) {
+                    $rankings[$key][$index]['accounts'][$accountIndex]['plan_name'] = $plans->get((int) $account['user_id'])?->plan_name;
+                }
+            }
+        }
+
+        return $rankings;
     }
 
     /** 给排行记录附加当前插件名单状态，页面无需猜测是否已拉黑。 */

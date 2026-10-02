@@ -16,7 +16,7 @@ class MaskAnalysisController extends Controller
     public function page(Request $request)
     {
         return view(
-            $this->authenticated($request) ? 'mask-analysis.index' : 'mask-analysis.login',
+            $this->authenticated($request) ? 'mask-analysis.dashboard' : 'mask-analysis.login',
             ['analysisBaseUrl' => $this->analysisBasePath()]
         );
     }
@@ -81,6 +81,26 @@ class MaskAnalysisController extends Controller
         }
 
         return response()->json($analysis->listAccessLogs($this->analysisFilters($request, true)));
+    }
+
+    public function accountIps(Request $request, MaskAnalysisService $analysis)
+    {
+        if (!$this->authenticated($request)) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $validated = $request->validate([
+            'user_id' => 'required|integer|min:1',
+            'page' => 'nullable|integer|min:1',
+            'page_size' => 'nullable|integer|in:10,20,50',
+        ]);
+
+        return response()->json($analysis->listAccountIps(
+            (int) $validated['user_id'],
+            $this->analysisFilters($request),
+            (int) ($validated['page'] ?? 1),
+            (int) ($validated['page_size'] ?? 10)
+        ));
     }
 
     public function blacklist(Request $request)
