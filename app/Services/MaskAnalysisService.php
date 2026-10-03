@@ -20,7 +20,14 @@ class MaskAnalysisService
         $summary = $this->summary($query);
         $blacklistIpRanges = $filters['blacklist_ip_ranges'] ?? [];
         $blacklistEmails = array_map('strtolower', $filters['blacklist_emails'] ?? []);
-        $rankings = $this->markRankingBlacklistState($this->attachAccountPlans($this->rankings($query)), $blacklistIpRanges, $blacklistEmails);
+        $rankings = $this->markRankingBlacklistState($this->attachAccountProfiles($this->rankings($query)), $blacklistIpRanges, $blacklistEmails);
+        // 使用当前流量的原始字节值排序，未知账号信息放在最后。
+        usort($rankings['traffic_users'], fn (array $left, array $right): int => [
+            isset($left['traffic_used']) ? 0 : 1, $left['traffic_used'] ?? 0, $left['user_id'],
+        ] <=> [
+            isset($right['traffic_used']) ? 0 : 1, $right['traffic_used'] ?? 0, $right['user_id'],
+        ]);
+        $summary['traffic_user_count'] = count($rankings['traffic_users']);
         $accountEvidence = $this->accountEvidence($query, $rankings['risk_users']);
         $accountEvidence = array_map(function (array $item) use ($blacklistIpRanges, $blacklistEmails): array {
             $item['email_blacklisted'] = in_array(strtolower((string) $item['email']), $blacklistEmails, true);
@@ -58,6 +65,7 @@ class MaskAnalysisService
         $logPage = max(1, (int) ($filters['log_page'] ?? 1));
         $total = (clone $query)->count();
         $logs = (clone $query)
+            ->with('user:id,created_at,u,d,transfer_enable')
             ->leftJoin('v2_plan as mask_log_plan', 'v2_subscription_mask_logs.plan_id', '=', 'mask_log_plan.id')
             ->leftJoin('v2_server_group as mask_log_group', 'v2_subscription_mask_logs.group_id', '=', 'mask_log_group.id')
             ->select('v2_subscription_mask_logs.*', 'mask_log_plan.name as plan_name', 'mask_log_group.name as group_name')
@@ -66,6 +74,7 @@ class MaskAnalysisService
             ->get()
             ->map(function (SubscriptionMaskLog $log) use ($blacklistIpRanges, $blacklistEmails): array {
                 $row = $this->logRow($log);
+                $row['account_profile'] = $this->accountUsage($log->user);
                 $row['ip_blacklist_entry'] = $this->findIpBlacklistEntry($row['ip'] ?? null, $blacklistIpRanges);
                 $row['ip_blacklisted'] = $row['ip_blacklist_entry'] !== null;
                 $row['email_blacklisted'] = in_array(strtolower((string) $row['email']), $blacklistEmails, true);
@@ -89,11 +98,12 @@ class MaskAnalysisService
         $query = SubscriptionMaskLog::query()
             ->whereBetween('created_at', [$filters['start'], $filters['end']])
             ->where('user_id', $userId);
+        $this->applyRegistrationFilters($query, $filters);
         $latest = (clone $query)->orderByDesc('id')->first();
         $profile = \App\Models\User::query()
             ->leftJoin('v2_plan as account_plan', 'v2_user.plan_id', '=', 'account_plan.id')
             ->where('v2_user.id', $userId)
-            ->select('v2_user.email', 'account_plan.name as plan_name')
+            ->select('v2_user.id', 'v2_user.email', 'v2_user.created_at', 'v2_user.u', 'v2_user.d', 'v2_user.transfer_enable', 'account_plan.name as plan_name')
             ->first();
         $email = $latest?->email ?? $profile?->email;
         $emails = array_map('strtolower', $filters['blacklist_emails'] ?? []);
@@ -129,13 +139,13 @@ class MaskAnalysisService
             })->all();
 
         return [
-            'account' => [
+            'account' => array_merge([
                 'user_id' => $userId,
                 'email' => $email,
                 'plan_name' => $profile?->plan_name,
                 'email_blacklisted' => $emailBlacklisted,
                 'email_blacklist_entry' => $emailBlacklisted ? strtolower((string) $email) : null,
-            ],
+            ], $this->accountUsage($profile)),
             'request_count' => (clone $query)->count(),
             'start' => Carbon::parse($filters['start'])->toDateString(),
             'end' => Carbon::parse($filters['end'])->toDateString(),
@@ -148,7 +158,7 @@ class MaskAnalysisService
 
     public function query(array $filters): Builder
     {
-        return SubscriptionMaskLog::query()
+        return $this->applyRegistrationFilters(SubscriptionMaskLog::query(), $filters)
             ->whereBetween('v2_subscription_mask_logs.created_at', [$filters['start'], $filters['end']])
             ->when($filters['email'] ?? null, fn (Builder $query, string $email) => $query->where('email', 'like', '%' . $email . '%'))
             ->when($filters['ip'] ?? null, fn (Builder $query, string $ip) => $query->where('ip', $ip))
@@ -174,6 +184,25 @@ class MaskAnalysisService
             ->when($filters['proxy_only'] ?? false, fn (Builder $query) => $query->where('is_proxy', true))
             ->when($filters['masked_only'] ?? false, fn (Builder $query) => $query->where('masked', true))
             ->when($filters['min_fraud_score'] ?? null, fn (Builder $query, int $score) => $query->where('fraud_score', '>=', $score));
+    }
+
+    /** 注册日期按账号的时间戳筛选，与订阅访问时间分别限制。 */
+    private function applyRegistrationFilters(Builder $query, array $filters): Builder
+    {
+        $start = $filters['registered_start'] ?? null;
+        $end = $filters['registered_end'] ?? null;
+        if ($start !== null || $end !== null) {
+            $query->whereHas('user', function (Builder $users) use ($start, $end): void {
+                if ($start !== null) {
+                    $users->where('v2_user.created_at', '>=', Carbon::parse($start)->timestamp);
+                }
+                if ($end !== null) {
+                    $users->where('v2_user.created_at', '<=', Carbon::parse($end)->timestamp);
+                }
+            });
+        }
+
+        return $query;
     }
 
     private function summary(Builder $query): array
@@ -237,27 +266,48 @@ class MaskAnalysisService
         ];
     }
 
-    /** 一次查询补齐关联账号的套餐，供详情表格显示。 */
-    private function attachAccountPlans(array $rankings): array
+    /** 读取账号当前的注册时间和流量，流量单位保持数据库中的字节。 */
+    private function accountUsage(?\App\Models\User $user): array
+    {
+        return [
+            'registered_at' => $user?->created_at,
+            'traffic_used' => $user ? $user->getTotalUsedTraffic() : null,
+            'traffic_remaining' => $user ? $user->getRemainingTraffic() : null,
+            'traffic_total' => $user ? (int) ($user->transfer_enable ?? 0) : null,
+        ];
+    }
+
+    /** 一次查询补齐账号的套餐、注册时间和当前流量，供详情显示。 */
+    private function attachAccountProfiles(array $rankings): array
     {
         $userIds = [];
         foreach ($rankings as $rows) {
             foreach ($rows as $row) {
+                if (isset($row['user_id'])) {
+                    $userIds[] = (int) $row['user_id'];
+                }
                 foreach ($row['accounts'] ?? [] as $account) {
                     $userIds[] = (int) $account['user_id'];
                 }
             }
         }
-        $plans = \App\Models\User::query()
+        $profiles = \App\Models\User::query()
             ->leftJoin('v2_plan as analysis_plan', 'v2_user.plan_id', '=', 'analysis_plan.id')
             ->whereIn('v2_user.id', array_values(array_unique($userIds)))
-            ->select('v2_user.id', 'analysis_plan.name as plan_name')
+            ->select('v2_user.id', 'v2_user.created_at', 'v2_user.u', 'v2_user.d', 'v2_user.transfer_enable', 'analysis_plan.name as plan_name')
             ->get()
             ->keyBy('id');
         foreach ($rankings as $key => $rows) {
             foreach ($rows as $index => $row) {
+                if (isset($row['user_id'])) {
+                    $profile = $profiles->get((int) $row['user_id']);
+                    $rankings[$key][$index] = array_merge($row, ['plan_name' => $profile?->plan_name], $this->accountUsage($profile));
+                }
                 foreach ($row['accounts'] ?? [] as $accountIndex => $account) {
-                    $rankings[$key][$index]['accounts'][$accountIndex]['plan_name'] = $plans->get((int) $account['user_id'])?->plan_name;
+                    $profile = $profiles->get((int) $account['user_id']);
+                    $rankings[$key][$index]['accounts'][$accountIndex] = array_merge($account, [
+                        'plan_name' => $profile?->plan_name,
+                    ], $this->accountUsage($profile));
                 }
             }
         }
@@ -525,6 +575,7 @@ class MaskAnalysisService
 
         return [
             'risk_users' => $riskUsers,
+            'traffic_users' => $userRows->map(fn ($row): array => $this->accountFromUserRow($row))->values()->all(),
             'ip_details' => $this->ipRanking($query),
             'high_risk_ips' => $this->ipRanking($query, true),
             'shared_ips' => $sharedIps,

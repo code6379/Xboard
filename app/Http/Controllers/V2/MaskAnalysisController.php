@@ -117,7 +117,10 @@ class MaskAnalysisController extends Controller
             validator(['value' => $value], ['value' => 'required|email:rfc|max:64'])->validate();
             $value = strtolower($value);
         } elseif ($action === 'add') {
-            validator(['value' => $value], ['value' => 'required|ip|max:128'])->validate();
+            if (!$this->isIpOrCidr($value)) {
+                return response()->json(['message' => 'IP 或 CIDR 格式无效'], 422);
+            }
+            $value = $this->normalizeBlacklistIp($value);
         } elseif (!$this->isIpOrCidr($value)) {
             return response()->json(['message' => 'IP 或 CIDR 格式无效'], 422);
         }
@@ -177,12 +180,23 @@ class MaskAnalysisController extends Controller
         foreach ($existing as $entry) {
             $alreadyListed = $type === 'email'
                 ? strtolower($entry) === $value
-                : ($entry === $value || \Symfony\Component\HttpFoundation\IpUtils::checkIp($value, $entry));
+                : $this->ipRangeCovers($entry, $value);
             if ($alreadyListed) {
+                if ($type === 'ip') {
+                    $cleaned = array_values(array_filter($lines, fn (string $line): bool => trim($line) === $entry || !$this->ipRangeCovers($value, trim($line))));
+                    if ($cleaned !== $lines) {
+                        $config[$configKey] = implode("\n", $cleaned);
+                        $plugin->update(['config' => json_encode($config, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)]);
+                    }
+                }
                 return response()->json(['data' => ['type' => $type, 'value' => $value, 'already_blacklisted' => true, 'matched_entry' => $entry]]);
             }
         }
 
+        if ($type === 'ip') {
+            // 用完整网段替换其中已有的单 IP 或更小网段，解除时不会遗留重叠规则。
+            $lines = array_values(array_filter($lines, fn (string $line): bool => !$this->ipRangeCovers($value, trim($line))));
+        }
         $lines[] = $value;
         $config[$configKey] = implode("\n", array_values(array_filter(array_map('trim', $lines), fn (string $line): bool => $line !== '')));
         $plugin->update(['config' => json_encode($config, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)]);
@@ -246,11 +260,47 @@ class MaskAnalysisController extends Controller
         return (int) $parts[1] <= $maxPrefix;
     }
 
+    /** 分析页新增的单个 IPv4 默认转换成 /24；显式 CIDR 和 IPv6 保留原范围。 */
+    private function normalizeBlacklistIp(string $value): string
+    {
+        $parts = explode('/', $value);
+        if (filter_var($parts[0], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)
+            && (!isset($parts[1]) || (int) $parts[1] === 24)) {
+            $octets = explode('.', $parts[0]);
+            return implode('.', array_slice($octets, 0, 3)) . '.0/24';
+        }
+
+        return $value;
+    }
+
+    /** 判断一个名单条目是否覆盖整个目标范围，避免把只覆盖半个 /24 的规则当成已拉黑。 */
+    private function ipRangeCovers(string $range, string $target): bool
+    {
+        if (!$this->isIpOrCidr($range) || !$this->isIpOrCidr($target)) {
+            return false;
+        }
+        $rangeParts = explode('/', $range);
+        $targetParts = explode('/', $target);
+        $rangeAddress = inet_pton($rangeParts[0]);
+        $targetAddress = inet_pton($targetParts[0]);
+        if (strlen($rangeAddress) !== strlen($targetAddress)) {
+            return false;
+        }
+        $maxPrefix = strlen($rangeAddress) === 4 ? 32 : 128;
+        $rangePrefix = isset($rangeParts[1]) ? (int) $rangeParts[1] : $maxPrefix;
+        $targetPrefix = isset($targetParts[1]) ? (int) $targetParts[1] : $maxPrefix;
+
+        return $rangePrefix <= $targetPrefix
+            && \Symfony\Component\HttpFoundation\IpUtils::checkIp($targetParts[0], $range);
+    }
+
     private function analysisFilters(Request $request, bool $includeLogPagination = false): array
     {
         $rules = [
             'start' => 'nullable|date',
             'end' => 'nullable|date',
+            'registered_start' => 'nullable|date_format:Y-m-d',
+            'registered_end' => 'nullable|date_format:Y-m-d',
             'email' => 'nullable|string|max:64',
             'ip_range' => 'nullable|string|max:128',
             'ip' => 'nullable|string|max:128',
@@ -269,6 +319,12 @@ class MaskAnalysisController extends Controller
         $validated = $request->validate($rules);
         $end = isset($validated['end']) ? Carbon::parse($validated['end'])->endOfDay() : now()->endOfDay();
         $start = isset($validated['start']) ? Carbon::parse($validated['start'])->startOfDay() : $end->copy()->subDays(6)->startOfDay();
+        $registeredStart = isset($validated['registered_start']) ? Carbon::parse($validated['registered_start'])->startOfDay() : null;
+        $registeredEnd = isset($validated['registered_end']) ? Carbon::parse($validated['registered_end'])->endOfDay() : null;
+
+        if ($registeredStart && $registeredEnd && $registeredEnd->lt($registeredStart)) {
+            abort(response()->json(['message' => '注册结束日期不能早于注册开始日期'], 422));
+        }
 
         if ($end->lt($start) || $start->diffInDays($end) > 30) {
             abort(response()->json(['message' => 'The selected date range must not exceed 31 days.'], 422));
@@ -285,6 +341,8 @@ class MaskAnalysisController extends Controller
         return [
             'start' => $start,
             'end' => $end,
+            'registered_start' => $registeredStart,
+            'registered_end' => $registeredEnd,
             'email' => $validated['email'] ?? null,
             'ip_range' => $ipRange !== '' ? $ipRange : null,
             'ip' => $validated['ip'] ?? null,
