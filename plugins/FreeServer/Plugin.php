@@ -116,7 +116,7 @@ class Plugin extends AbstractPlugin
         // 剔除推广/引流的假节点。
         $filtered = collect($jsonDecode['outbounds'])
             ->filter(function ($item) {
-                if (!is_array($item) || count($item) !== 8) {
+                if (!is_array($item) || count($item) < 7) {
                     return false;
                 }
 
