@@ -20,7 +20,7 @@ class Plugin extends AbstractPlugin
             return;
         }
 
-        $this->filter('client.subscribe.servers', [$this, 'addFreeServers'], 9);
+        $this->filter('client.subscribe.servers', [$this, 'addFreeServers'], 20);
     }
 
     /**
