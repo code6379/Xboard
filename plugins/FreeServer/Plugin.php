@@ -11,6 +11,94 @@ use Illuminate\Support\Facades\Http;
 
 class Plugin extends AbstractPlugin
 {
+    /** 按真实账号订阅节点的完整字段定义模板，运行时不读取原节点。 */
+    private const SERVER_TEMPLATE = [
+        'id' => null,
+        'type' => 'vless',
+        'code' => null,
+        'parent_id' => null,
+        'machine_id' => null,
+        'group_ids' => [],
+        'route_ids' => [],
+        'name' => '',
+        'rate' => 1.0,
+        'rate_time_enable' => false,
+        'rate_time_ranges' => [],
+        'tags' => [],
+        'host' => '',
+        'port' => 0,
+        'server_port' => 0,
+        'ports' => null,
+        'show' => true,
+        'enabled' => true,
+        'sort' => 0,
+        'created_at' => null,
+        'updated_at' => null,
+        'custom_outbounds' => null,
+        'custom_routes' => null,
+        'cert_config' => null,
+        'transfer_enable' => null,
+        'u' => 0,
+        'd' => 0,
+        'password' => '',
+        'last_check_at' => null,
+        'last_push_at' => null,
+        'online' => 0,
+        'is_online' => 0,
+        'available_status' => 0,
+        'cache_key' => null,
+        'server_key' => null,
+        'protocol_settings' => [
+            'network' => 'tcp',
+            'network_settings' => [
+                'path' => '/',
+                'headers' => ['Host' => ''],
+            ],
+            'tls' => 0,
+            'tls_settings' => [
+                'server_name' => null,
+                'allow_insecure' => false,
+                'ech' => [
+                    'enabled' => false,
+                    'config' => null,
+                    'query_server_name' => null,
+                    'key' => null,
+                    'key_path' => null,
+                    'config_path' => null,
+                ],
+            ],
+            'flow' => null,
+            'reality_settings' => [
+                'server_name' => null,
+                'server_port' => null,
+                'public_key' => null,
+                'private_key' => null,
+                'short_id' => null,
+                'allow_insecure' => false,
+            ],
+            'utls' => [
+                'enabled' => false,
+                'fingerprint' => 'chrome',
+            ],
+            'encryption' => [
+                'enabled' => false,
+                'encryption' => null,
+                'decryption' => null,
+            ],
+            'multiplex' => [
+                'enabled' => false,
+                'protocol' => 'yamux',
+                'max_connections' => null,
+                'padding' => false,
+                'brutal' => [
+                    'enabled' => false,
+                    'up_mbps' => null,
+                    'down_mbps' => null,
+                ],
+            ],
+        ],
+    ];
+
     /**
      * 将 CF 高速节点合并到用户订阅节点中。
      */
@@ -125,14 +213,8 @@ class Plugin extends AbstractPlugin
             })
             ->values();
 
-        // 从现有节点中取一个 vless 类型的模板。
-        $template = collect($servers)->firstWhere('type', 'vless') ?? [];
-        if ($template === []) {
-            return $servers;
-        }
-
         $converted = collect($filtered)->values()
-            ->map(fn($outbound, $i) => $this->convertOutboundToServer($template, $outbound, $i + 1))
+            ->map(fn($outbound, $i) => $this->convertOutboundToServer($outbound, $i + 1))
             ->toArray();
 
         return collect($servers)->merge($converted)->values()->toArray();
@@ -178,19 +260,18 @@ class Plugin extends AbstractPlugin
             }
         }
 
-        return $tag;
+        return '🇺🇸' . ' ' . $tag;
     }
 
     /**
      * 将远程 outbound 转换为 XBoard 节点。
      *
-     * @param array<string, mixed> $template
      * @param array<string, mixed> $outbound
      * @return array<string, mixed>
      */
-    private function convertOutboundToServer(array $template, array $outbound, int $sort = 0): array
+    private function convertOutboundToServer(array $outbound, int $sort = 0): array
     {
-        $server = $template;
+        $server = self::SERVER_TEMPLATE;
         $server['id'] = null;
         $server['name'] = $this->guessCountryLabel($outbound['tag'] ?? '', 'CF高速');
         $server['sort'] = $sort;
