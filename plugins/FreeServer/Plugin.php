@@ -273,7 +273,7 @@ class Plugin extends AbstractPlugin
     {
         $server = self::SERVER_TEMPLATE;
         $server['id'] = null;
-        $server['name'] = $this->guessCountryLabel($outbound['tag'] ?? '', 'CF高速');
+        $server['name'] = $this->guessCountryLabel($outbound['tag'] ?? '', 'CF');
         $server['sort'] = $sort;
         $server['created_at'] = null;
         $server['updated_at'] = null;
