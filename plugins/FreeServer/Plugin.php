@@ -2,6 +2,7 @@
 
 namespace Plugin\FreeServer;
 
+use Throwable;
 use App\Models\User;
 use App\Services\Plugin\AbstractPlugin;
 use Illuminate\Http\Request;
@@ -203,7 +204,7 @@ class Plugin extends AbstractPlugin
                 $jsonDecode = $response->json();
                 $loaded = true;
                 break;
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 Log::warning('免费节点订阅请求异常', [
                     'url' => $url,
                     'error' => $e->getMessage(),
@@ -224,7 +225,7 @@ class Plugin extends AbstractPlugin
 
         if (!is_array($jsonDecode) || !isset($jsonDecode['outbounds']) || !is_array($jsonDecode['outbounds'])) {
             Log::warning('免费节点订阅内容格式无效', [
-                'url' => $this->getSubscriptionUrl(),
+                'url' => $lastUrl,
             ]);
 
             return $servers;
