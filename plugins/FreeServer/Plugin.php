@@ -104,7 +104,7 @@ class Plugin extends AbstractPlugin
      */
     public function boot(): void
     {
-        if (!$this->getConfig('enabled', false) || $this->getSubscriptionUrl() === '') {
+        if (!$this->getConfig('enabled', false) || $this->getSubscriptionUrls() === []) {
             return;
         }
 
@@ -155,9 +155,15 @@ class Plugin extends AbstractPlugin
         return in_array((int) $user->group_id, $allowedGroupIds, true);
     }
 
-    private function getSubscriptionUrl(): string
+    /** 获取按优先顺序排列的免费节点订阅地址。 */
+    private function getSubscriptionUrls(): array
     {
-        return trim((string) $this->getConfig('subscription_url', ''));
+        $configuredUrls = (string) $this->getConfig('subscription_url', '');
+
+        return array_values(array_filter(array_map(
+            'trim',
+            preg_split('/[\r\n|,]+/', $configuredUrls) ?: []
+        ), fn(string $url): bool => $url !== ''));
     }
 
     /**
@@ -169,25 +175,48 @@ class Plugin extends AbstractPlugin
      */
     private function freeServers(array $servers): array
     {
-        try {
-            $response = Http::timeout(30)
-                ->withHeader('user-agent', 'sing-box')
-                ->get($this->getSubscriptionUrl());
+        $jsonDecode = null;
+        $loaded = false;
+        $lastUrl = null;
 
-            if ($response->failed()) {
-                Log::warning('免费节点订阅请求失败', [
-                    'status' => $response->status(),
-                    'url' => $this->getSubscriptionUrl(),
+        foreach ($this->getSubscriptionUrls() as $url) {
+            $lastUrl = $url;
+
+            try {
+                $response = Http::timeout(30)
+                    ->withHeader('user-agent', 'sing-box')
+                    ->get($url);
+
+                if ($response->status() === 404) {
+                    continue;
+                }
+
+                if ($response->failed()) {
+                    Log::warning('免费节点订阅请求失败', [
+                        'status' => $response->status(),
+                        'url' => $url,
+                    ]);
+
+                    return $servers;
+                }
+
+                $jsonDecode = $response->json();
+                $loaded = true;
+                break;
+            } catch (\Throwable $e) {
+                Log::warning('免费节点订阅请求异常', [
+                    'url' => $url,
+                    'error' => $e->getMessage(),
                 ]);
 
                 return $servers;
             }
+        }
 
-            $jsonDecode = $response->json();
-        } catch (\Throwable $e) {
-            Log::warning('免费节点订阅请求异常', [
-                'url' => $this->getSubscriptionUrl(),
-                'error' => $e->getMessage(),
+        if (!$loaded) {
+            Log::warning('免费节点订阅地址均返回 404', [
+                'status' => 404,
+                'url' => $lastUrl,
             ]);
 
             return $servers;

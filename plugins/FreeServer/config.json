@@ -16,7 +16,7 @@
             "type": "string",
             "default": "",
             "label": "免费节点订阅地址",
-            "description": "用于拉取免费节点的 sing-box JSON 订阅地址，必须由后台配置"
+            "description": "用于拉取免费节点的 sing-box JSON 订阅地址。多个地址用英文逗号分隔，前一个返回 404 时尝试下一个"
         },
         "allowed_group_ids": {
             "type": "string",
