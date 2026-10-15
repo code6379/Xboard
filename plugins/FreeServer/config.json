@@ -17,7 +17,7 @@
             "default": "",
             "label": "免费节点订阅地址",
             "placeholder": "每行填写一个订阅地址",
-            "description": "用于拉取免费节点的 sing-box JSON 订阅地址，每行一个；也可用英文逗号分隔，前一个返回 404 时尝试下一个"
+            "description": "用于拉取免费节点的 sing-box JSON 订阅地址，每行一个；也可用英文逗号分隔。地址返回 404 后会冷却至次日早上 8 点，并尝试下一个地址"
         },
         "allowed_group_ids": {
             "type": "string",

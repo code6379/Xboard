@@ -7,11 +7,14 @@ use App\Models\User;
 use App\Services\Plugin\AbstractPlugin;
 use Illuminate\Http\Request;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 
 class Plugin extends AbstractPlugin
 {
+    private const URL_COOLDOWN_CACHE_PREFIX = 'free_server:subscription_url_cooldown:';
+
     /** 按真实账号订阅节点的完整字段定义模板，运行时不读取原节点。 */
     private const SERVER_TEMPLATE = [
         'id' => null,
@@ -161,10 +164,27 @@ class Plugin extends AbstractPlugin
     {
         $configuredUrls = (string) $this->getConfig('subscription_url', '');
 
-        return array_values(array_filter(array_map(
+        $urls = array_values(array_filter(array_map(
             'trim',
             preg_split('/[\r\n|,]+/', $configuredUrls) ?: []
         ), fn(string $url): bool => $url !== ''));
+
+        return array_values(array_filter(
+            $urls,
+            fn(string $url): bool => !Cache::has($this->getUrlCooldownCacheKey($url))
+        ));
+    }
+
+    /** 404 地址冷却到次日早上 8 点，时间使用应用时区。 */
+    private function cooldownSubscriptionUrl(string $url): void
+    {
+        $restoreAt = now()->addDay()->startOfDay()->addHours(8);
+        Cache::put($this->getUrlCooldownCacheKey($url), true, $restoreAt);
+    }
+
+    private function getUrlCooldownCacheKey(string $url): string
+    {
+        return self::URL_COOLDOWN_CACHE_PREFIX . $url;
     }
 
     /**
@@ -189,6 +209,7 @@ class Plugin extends AbstractPlugin
                     ->get($url);
 
                 if ($response->status() === 404) {
+                    $this->cooldownSubscriptionUrl($url);
                     continue;
                 }
 
@@ -215,7 +236,7 @@ class Plugin extends AbstractPlugin
         }
 
         if (!$loaded) {
-            Log::warning('免费节点订阅地址均返回 404', [
+            Log::warning('免费节点订阅地址均返回 404，已冷却至次日早上 8 点', [
                 'status' => 404,
                 'url' => $lastUrl,
             ]);
