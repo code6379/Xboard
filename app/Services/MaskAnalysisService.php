@@ -910,7 +910,6 @@ class MaskAnalysisService
             'reason' => $log->reason,
             'masked' => (bool) $log->masked,
             'matched_value' => $log->matched_value,
-            'fake_domain' => $log->fake_domain,
             'client_flag' => $log->client_flag,
         ];
     }

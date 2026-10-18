@@ -134,8 +134,8 @@ class MaskAnalysisController extends Controller
         }
 
         $config = $plugin->config ? (json_decode($plugin->config, true) ?: []) : [];
-        if (empty($config['enabled']) || trim((string) ($config['fake_domain'] ?? '')) === '') {
-            return response()->json(['message' => '请先启用订阅伪装并配置替换域名'], 409);
+        if (empty($config['enabled'])) {
+            return response()->json(['message' => '请先启用订阅风控插件'], 409);
         }
 
         $configKey = $type === 'ip' ? 'blacklist_ip_ranges' : 'blacklist_emails';

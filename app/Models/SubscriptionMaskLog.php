@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * 每次订阅节点域名伪装判断的追溯记录。
+ * 每次订阅风控判断的追溯记录。
  */
 class SubscriptionMaskLog extends Model
 {
@@ -94,19 +94,14 @@ class SubscriptionMaskLog extends Model
         ]);
     }
 
-    /**
-     * 标记本次规则判断结果及是否替换域名。
-     *
-     * @param array{reason: string, value: string}|null $match
-     */
-    public function markCompleted(?array $match,string $fakeDomain): void
+    /** 标记风控判断结果；masked 字段沿用为历史兼容的命中标记。 */
+    public function markCompleted(?array $match): void
     {
         $this->fill([
             'completed'     => true,
             'masked'        => $match !== null,
             'reason'        => $match['reason'] ?? null,
             'matched_value' => $match['value'] ?? null,
-            'fake_domain'   => $fakeDomain
         ]);
     }
 

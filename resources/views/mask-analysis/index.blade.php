@@ -73,8 +73,8 @@ function requestDetailHtml(row){
         ['请求 IP',row.ip],['X-Forwarded-For',row.forwarded_for],['X-Real-IP',row.real_ip],['地理位置',[row.continent,row.country,row.region,row.city].filter(Boolean).join(' · ')],['国家代码',row.country_code],['ISP',row.isp],['ASN',row.asn],['AS / 企业',row.as_name],['IP 域名',row.ip_domain],['使用类型',row.usage_type],['网络速度',row.net_speed],['代理状态',row.is_proxy?'是':'否 / 未知'],['代理类型',row.proxy_type],['代理提供商',row.proxy_provider],['代理最后出现',row.proxy_last_seen],['欺诈评分',row.fraud_score],['风险标记',(row.risk_flags||[]).join('、')],['威胁信息',row.threat]
     ])+'<h3>账号快照</h3>'+detailFacts([
         ['用户 ID',row.user_id],['邮箱',row.email],['套餐',row.plan_name],['套餐 ID',row.plan_id],['分组',row.group_name],['分组 ID',row.group_id],['套餐总流量',row.transfer_enable],['已用上传',row.upload],['已用下载',row.download],['限速',row.speed_limit],['设备限制',row.device_limit],['封禁状态',row.banned?'已封禁':'正常'],['到期时间',expiry]
-    ])+'<h3>伪装处理</h3>'+detailFacts([
-        ['处理完成',row.completed?'是':'否'],['是否伪装',row.masked?'已伪装':'未伪装'],['命中原因',row.reason],['命中内容',row.matched_value],['返回伪装域名',row.fake_domain],['处理耗时（毫秒）',row.processing_ms]
+    ])+'<h3>风控处理</h3>'+detailFacts([
+        ['处理完成',row.completed?'是':'否'],['风险命中',row.masked?'已触发风控':'未触发'],['订阅返回结果',row.masked?'风控提示节点；符合分组时另附 CF 免费节点':'正常节点'],['命中原因',row.reason],['命中内容',row.matched_value],['处理耗时（毫秒）',row.processing_ms]
     ])+'<h3>名单操作</h3>'+blacklistButton('ip',row.ip||'',row.ip_blacklisted,row.ip_blacklist_entry||row.ip)+blacklistButton('email',row.email,row.email_blacklisted,row.email_blacklist_entry||row.email);
 }
 const tabInfo={
@@ -201,7 +201,7 @@ function renderLogs(data){
     document.querySelector('#logs-empty').hidden=rows.length>0;
     document.querySelector('#raw-detail').innerHTML='';
     activeLogDetailId=null;
-    document.querySelector('#logs').innerHTML=rows.map((row,index)=>'<tr><td>'+formatDate(row.created_at)+'</td><td>'+escapeHtml(row.email)+'<small class="subtle">用户 #'+escapeHtml(row.user_id)+'</small></td><td>'+escapeHtml(row.plan_name||'—')+'</td><td>'+escapeHtml(row.group_name||'—')+'</td><td>'+(row.ip?'<a class="iplark-link" href="https://iplark.com/'+encodeURIComponent(row.ip)+'" target="_blank" rel="noopener noreferrer">'+escapeHtml(row.ip)+' ↗</a>':'—')+'</td><td>'+escapeHtml([row.country_code,row.country,row.city].filter(Boolean).join(' · ')||'—')+'</td><td>'+(row.is_proxy?pill('代理','red'):'—')+'<small class="subtle">风险分 '+escapeHtml(row.fraud_score??'—')+'</small></td><td>'+(row.masked?pill('已伪装'):(row.reason?pill(row.reason,'orange'):'原始域名'))+'</td><td><button class="row-button" type="button" data-log-detail="'+index+'">详情</button></td></tr>').join('');
+    document.querySelector('#logs').innerHTML=rows.map((row,index)=>'<tr><td>'+formatDate(row.created_at)+'</td><td>'+escapeHtml(row.email)+'<small class="subtle">用户 #'+escapeHtml(row.user_id)+'</small></td><td>'+escapeHtml(row.plan_name||'—')+'</td><td>'+escapeHtml(row.group_name||'—')+'</td><td>'+(row.ip?'<a class="iplark-link" href="https://iplark.com/'+encodeURIComponent(row.ip)+'" target="_blank" rel="noopener noreferrer">'+escapeHtml(row.ip)+' ↗</a>':'—')+'</td><td>'+escapeHtml([row.country_code,row.country,row.city].filter(Boolean).join(' · ')||'—')+'</td><td>'+(row.is_proxy?pill('代理','red'):'—')+'<small class="subtle">风险分 '+escapeHtml(row.fraud_score??'—')+'</small></td><td>'+(row.masked?pill('风控提示'):(row.reason?pill(row.reason,'orange'):'正常访问'))+'</td><td><button class="row-button" type="button" data-log-detail="'+index+'">详情</button></td></tr>').join('');
 }
 
 async function loadRankings(){
@@ -261,7 +261,7 @@ document.querySelector('#details').addEventListener('click',async event=>{
     if(!value){alert('没有可拉黑的'+label);return}
     const confirmation=action==='remove'
         ? (type==='ip'&&value.includes('/')?'确认删除网段 '+value+'？该网段内所有 IP 都会解除拉黑。':'确认将 '+value+' 从'+label+'黑名单移除？')
-        : '确认将 '+value+' 加入 '+label+' 黑名单？后续匹配到该项时会返回伪装订阅。';
+        : '确认将 '+value+' 加入 '+label+' 黑名单？后续匹配到该项时会返回风控提示节点；符合分组时另附 CF 免费节点。';
     if(!confirm(confirmation))return;
     button.disabled=true;button.textContent='正在写入…';
     try{

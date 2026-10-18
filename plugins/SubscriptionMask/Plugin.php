@@ -12,14 +12,17 @@ use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\IpUtils;
 
 /**
- * 订阅风控与域名遮蔽。
+ * 订阅风控。
  *
  * 基于 IP 归属、代理画像、邮箱与流量名单判定风险用户，
- * 命中后仅在生成订阅内容时替换节点域名。
+ * 命中后只返回独立的风控提示节点；后续 FreeServer 可按自身分组配置追加免费节点。
  * 不会修改数据库内的真实节点配置，也不会影响后台和节点通讯。
  */
 class Plugin extends AbstractPlugin
 {
+    /** 风控命中后显示的默认提示内容。 */
+    private const DEFAULT_NOTICE_MESSAGE = '⚠️ 请关闭代理后更新订阅';
+
     public function boot(): void
     {
         // 总开关：关闭时不注册任何钩子，插件完全静默。
@@ -27,22 +30,21 @@ class Plugin extends AbstractPlugin
             return;
         }
 
-        $this->filter('client.subscribe.servers', [$this, 'maskSubscribeServers'], 10);
+        $this->filter('client.subscribe.servers', [$this, 'filterRiskySubscriptionServers'], 10);
         $this->listen('client.subscribe.success', [$this, 'recordSuccessfulSubscription'], 10);
     }
 
     /**
-     * 替换订阅内容中的节点域名
+     * 判断订阅风险，命中时清除真实节点并返回风控提示节点。
      *
-     * @param array   $servers
-     * @param User    $user
+     * @param array<int, array<string, mixed>> $servers
+     * @param User $user
      * @param Request $request
-     *
-     * @return array[]
+     * @return array<int, array<string, mixed>>
      */
-    public function maskSubscribeServers(array $servers, User $user, Request $request): array
+    public function filterRiskySubscriptionServers(array $servers, User $user, Request $request): array
     {
-        return $this->maskServersForUser($user, $request, $servers);
+        return $this->filterServersForUser($user, $request, $servers);
     }
 
     /** 订阅成功后更新数据库中的完成状态，不向外部发送通知。 */
@@ -61,7 +63,7 @@ class Plugin extends AbstractPlugin
         $ipInfo = $request->attributes->get('subscription_mask_ip_info');
         $countryCode = strtoupper((string) ($ipInfo['country_code'] ?? ''));
         if ($countryCode !== '' && $countryCode !== 'CN' && !$this->isAllowlistedIp($request->ip())) {
-            // 国外 IP 已返回伪装域名，不写入泄露分析记录。
+            // 国外 IP 已按风控策略处理，不写入泄露分析记录。
             return;
         }
 
@@ -69,12 +71,12 @@ class Plugin extends AbstractPlugin
     }
 
     /**
-     * 根据用户信息判断是否替换订阅节点域名，并准备成功请求的访问记录。
+     * 根据用户信息判断订阅风险，并准备成功请求的访问记录。
      *
      * @param array<int, array<string, mixed>> $servers
      * @return array<int, array<string, mixed>>
      */
-    public function maskServersForUser(User $user, Request $request, array $servers): array
+    public function filterServersForUser(User $user, Request $request, array $servers): array
     {
         $log = SubscriptionMaskLog::forMaskingRequest($user, $request);
 
@@ -94,25 +96,20 @@ class Plugin extends AbstractPlugin
         }
 
         $match = $this->getMaskReason($user, $request, $ipInfo);
-        $log->markCompleted($match, $this->getFakeDomain());
-        $request->attributes->set('subscription_mask_match', $match);
+        // 保留原有风控标记字段，供分析页继续统计风险命中。
+        $log->markCompleted($match);
         $request->attributes->set('subscription_mask_log', $log);
 
-        return $match === null ? $servers : $this->replaceServerDomains($servers);
+        return $match === null ? $servers : [$this->buildNoticeServer()];
     }
 
     /**
-     * 判断是否应对该用户返回假域名。
-     * 中国大陆 IP 或命中 IP 白名单时，才继续邮箱白名单、黑名单和低流量规则。
+     * 判断是否应对该用户返回提示节点，黑名单优先于白名单。
      *
      * @return array{reason: string, value: string}|null
      */
     private function getMaskReason(User $user, Request $request, ?array $ipInfo = null): ?array
     {
-        if ($this->getFakeDomain() === '') {
-            return null;
-        }
-
         $ip     = $request->ip();
 
         // 分析页明确拉黑的邮箱或 IP 优先于白名单。
@@ -151,7 +148,7 @@ class Plugin extends AbstractPlugin
         if ($countryCode === '') {
             return ['reason' => 'IP归属未知', 'value' => $ip];
         }
-        if ($countryCode !== '' && $countryCode !== 'CN') {
+        if ($countryCode !== 'CN') {
             return [
                 'reason' => '非大陆IP',
                 'value' => sprintf('%s|%s|%s', $ipInfo['country'] ?? '', $ipInfo['region'] ?? '', $ipInfo['city'] ?? ''),
@@ -295,15 +292,6 @@ class Plugin extends AbstractPlugin
     }
 
     /**
-     * 从插件配置读取固定假域名。
-     * 留空表示暂不启用该功能，所有用户都会收到真实节点域名。
-     */
-    private function getFakeDomain(): string
-    {
-        return trim((string) $this->getConfig('fake_domain', ''));
-    }
-
-    /**
      * 获取用于 IP 归属查询的服务实例。
      */
     private function getIp2Location(): IP2Location
@@ -333,61 +321,45 @@ class Plugin extends AbstractPlugin
         return $limit !== false && $limit > 0 ? $limit : null;
     }
 
-    /**
-     * 将订阅输出中可能暴露真实入口域名的字段全部替换为固定假域名。
-     * 这里只处理内存中的节点数组，数据库里的真实节点不会被修改。
-     *
-     * @param array<int, array<string, mixed>> $servers
-     * @return array<int, array<string, mixed>>
-     */
-    private function replaceServerDomains(array $servers): array
+    /** 构造独立的 Shadowsocks 提示节点，不复制任何真实节点信息。 */
+    private function buildNoticeServer(): array
     {
-        $fakeDomain = $this->getFakeDomain();
+        $message = trim((string) $this->getConfig('notice_message', self::DEFAULT_NOTICE_MESSAGE));
+        $message = preg_replace('/\R+/u', ' ', $message);
 
-        return array_map(function (array $server) use ($fakeDomain): array {
-            $server['host'] = $fakeDomain;
-            $settings = $server['protocol_settings'] ?? [];
+        if ($message === '') {
+            $message = self::DEFAULT_NOTICE_MESSAGE;
+        }
 
-            // 这些字段分别对应 TLS SNI、Reality SNI、WS/H2/HTTP 传输层 Host 等地址信息。
-            foreach ([
-                'tls_settings.server_name',
-                'reality_settings.server_name',
-                'tls.server_name',
-                'network_settings.headers.Host',
-                'network_settings.host',
-                'network_settings.header.request.headers.Host',
-                'obfs_settings.host',
-            ] as $path) {
-                $value = data_get($settings, $path);
-                if ($value !== null && $value !== '') {
-                    data_set(
-                        $settings,
-                        $path,
-                        is_array($value)
-                            ? array_fill(0, count($value), $fakeDomain)
-                            : $fakeDomain
-                    );
-                }
-            }
-
-            // Shadowsocks 插件的 host 参数也可能包含真实域名，需要一并替换。
-            if (!empty($settings['plugin_opts'])) {
-                $settings['plugin_opts'] = collect(explode(';', $settings['plugin_opts']))
-                    ->map(function (string $option) use ($fakeDomain): string {
-                        if (!str_contains($option, '=')) {
-                            return $option;
-                        }
-
-                        [$key] = explode('=', $option, 2);
-                        return str_contains(strtolower(trim($key)), 'host')
-                            ? trim($key) . '=' . $fakeDomain
-                            : $option;
-                    })
-                    ->implode(';');
-            }
-
-            $server['protocol_settings'] = $settings;
-            return $server;
-        }, $servers);
+        return [
+            'id' => null,
+            'type' => 'shadowsocks',
+            'code' => null,
+            'parent_id' => null,
+            'group_ids' => [],
+            'route_ids' => [],
+            'name' => $message,
+            'rate' => 1.0,
+            'tags' => [],
+            'host' => 'notice.invalid',
+            'port' => 1,
+            'server_port' => 1,
+            'password' => 'subscription-risk-notice',
+            'protocol_settings' => [
+                'cipher' => 'aes-128-gcm',
+                'obfs' => null,
+                'obfs_settings' => null,
+                'plugin' => null,
+                'plugin_opts' => null,
+            ],
+            'show' => true,
+            'enabled' => true,
+            'sort' => 0,
+            'created_at' => null,
+            'updated_at' => null,
+            'custom_outbounds' => null,
+            'custom_routes' => null,
+            'cert_config' => null,
+        ];
     }
 }

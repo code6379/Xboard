@@ -1,8 +1,8 @@
 {
-    "name": "订阅风控与域名遮蔽",
+    "name": "订阅风控",
     "code": "subscription_mask",
     "version": "1.0.0",
-    "description": "基于 IP 归属、代理画像、邮箱与流量名单判定风险用户，记录订阅访问情报，命中后仅在订阅输出中遮蔽真实节点域名，并支持 IP 和邮箱黑名单",
+    "description": "基于 IP 归属、邮箱名单与流量规则判断订阅风险；命中后返回提示节点，FreeServer 可按分组追加免费节点",
     "author": "XBoard Team",
     "type": "feature",
     "config": {
@@ -12,11 +12,11 @@
             "label": "启用插件",
             "description": "插件总开关"
         },
-        "fake_domain": {
+        "notice_message": {
             "type": "string",
-            "default": "oss-cn-guangzhou.chylink.xyz",
-            "label": "替换域名",
-            "description": "命中风险规则时替换节点使用的域名；留空则只记录风险与告警，不遮蔽真实节点域名"
+            "default": "⚠️ 请关闭代理后更新订阅",
+            "label": "风控提示内容",
+            "description": "风险命中后显示在提示节点名称中的内容，留空使用默认提示"
         },
         "ip2location_api_keys": {
             "type": "text",
@@ -34,25 +34,25 @@
             "type": "text",
             "default": "",
             "label": "IP 黑名单",
-            "description": "触发域名替换的 IP/CIDR，每行一条，支持 # 注释"
+            "description": "触发风控的 IP/CIDR，每行一条，支持 # 注释"
         },
         "blacklist_emails": {
             "type": "text",
             "default": "",
             "label": "邮箱黑名单",
-            "description": "触发域名替换的邮箱，每行一条，支持 # 注释"
+            "description": "触发风控的邮箱，每行一条，支持 # 注释"
         },
         "whitelist_emails": {
             "type": "text",
             "default": "",
             "label": "邮箱白名单",
-            "description": "不替换域名的邮箱，每行一条，支持 # 注释"
+            "description": "跳过低流量规则的邮箱，每行一条，支持 # 注释；不放行国外 IP 或黑名单"
         },
         "low_traffic_days": {
             "type": "number",
             "default": 7,
             "label": "低流量统计天数",
-            "description": "连续统计多少天低于阈值时触发替换，必须为正整数"
+            "description": "连续统计多少天低于阈值时触发风控，必须为正整数"
         },
         "low_traffic_limit": {
             "type": "number",
