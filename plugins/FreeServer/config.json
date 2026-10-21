@@ -2,7 +2,7 @@
     "name": "免费节点",
     "code": "free_server",
     "version": "1.0.0",
-    "description": "从配置的订阅地址获取并合并免费节点",
+    "description": "后台定时获取并缓存免费节点，用户订阅时从缓存合并",
     "author": "XBoard Team",
     "type": "feature",
     "config": {
@@ -10,7 +10,7 @@
             "type": "boolean",
             "default": false,
             "label": "启用免费节点",
-            "description": "是否将远程订阅中的免费节点合并到用户订阅"
+            "description": "是否启用免费节点缓存刷新和订阅合并"
         },
         "subscription_url": {
             "type": "text",
@@ -18,6 +18,18 @@
             "label": "免费节点订阅地址",
             "placeholder": "每行填写一个订阅地址",
             "description": "用于拉取免费节点的 sing-box JSON 订阅地址，每行一个；也可用英文逗号分隔。地址返回 404 后会冷却至次日早上 8 点，并尝试下一个地址"
+        },
+        "refresh_interval_minutes": {
+            "type": "number",
+            "default": 30,
+            "label": "缓存刷新间隔（分钟）",
+            "description": "后台缓存免费节点的刷新间隔，范围 1 至 1440 分钟，默认 30 分钟"
+        },
+        "stale_retention_hours": {
+            "type": "number",
+            "default": 72,
+            "label": "旧节点最长保留时间（小时）",
+            "description": "上游刷新失败时保留最后一次成功节点的最长时间，范围 24 至 168 小时"
         },
         "allowed_group_ids": {
             "type": "string",

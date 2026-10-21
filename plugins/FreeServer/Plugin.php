@@ -2,20 +2,38 @@
 
 namespace Plugin\FreeServer;
 
-use Throwable;
 use App\Models\User;
 use App\Services\Plugin\AbstractPlugin;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Http\Request;
-use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
+/**
+ * 缓存远程免费节点，并按用户分组将缓存节点合并到订阅中。
+ */
 class Plugin extends AbstractPlugin
 {
+    /**
+     * 远程订阅地址返回 404 后的冷却标记缓存键前缀。
+     */
     private const URL_COOLDOWN_CACHE_PREFIX = 'free_server:subscription_url_cooldown:';
 
-    /** 按真实账号订阅节点的完整字段定义模板，运行时不读取原节点。 */
+    /**
+     * 转换后免费节点缓存键前缀；版本号用于区分缓存结构。
+     */
+    private const NODE_CACHE_KEY_PREFIX = 'free_server:subscription_nodes:v1:';
+
+    /**
+     * 刷新状态缓存键前缀。
+     */
+    private const REFRESH_STATE_CACHE_KEY_PREFIX = 'free_server:refresh_state:v1:';
+
+    /**
+     * 远程 VLESS 节点转换为 XBoard 节点时使用的字段模板。
+     */
     private const SERVER_TEMPLATE = [
         'id' => null,
         'type' => 'vless',
@@ -104,26 +122,47 @@ class Plugin extends AbstractPlugin
     ];
 
     /**
-     * 将 CF 高速节点合并到用户订阅节点中。
+     * 根据插件开关和订阅地址配置注册订阅过滤器。
+     *
+     * @return void
      */
     public function boot(): void
     {
-        if (!$this->getConfig('enabled', false) || $this->getSubscriptionUrls() === []) {
+        if (!$this->getConfig('enabled', false) || $this->getConfiguredSubscriptionUrls() === []) {
             return;
         }
 
-        $this->filter('client.subscribe.servers', [$this, 'addFreeServers'], 20);
+        $this->filter('client.subscribe.servers', [$this, 'addFreeServers'], 30);
     }
 
     /**
-     * 向用户订阅节点中添加免费节点。
+     * 注册免费节点缓存的周期刷新任务。
      *
-     * @param array<int, array<string, mixed>> $servers
-     * @param User                             $user
-     * @param Request                          $request
+     * 任务每分钟检查一次，仅在缓存缺失或到达刷新时间时访问订阅源。
      *
-     * @return array<int, array<string, mixed>>
-     * @throws ConnectionException
+     * @param Schedule $schedule Laravel 调度器
+     * @return void
+     */
+    public function schedule(Schedule $schedule): void
+    {
+        if (!$this->getConfig('enabled', false) || $this->getConfiguredSubscriptionUrls() === []) {
+            return;
+        }
+
+        $schedule->call(fn() => $this->refreshSubscriptionCacheIfDue())
+            ->everyMinute()
+            ->name('free_server_subscription_cache_refresh')
+            ->onOneServer()
+            ->withoutOverlapping(30);
+    }
+
+    /**
+     * 将缓存的免费节点合并到允许分组用户的订阅中。
+     *
+     * @param array<int, array<string, mixed>> $servers 原订阅节点
+     * @param User $user 当前用户
+     * @param Request $request 当前订阅请求
+     * @return array<int, array<string, mixed>> 合并后的订阅节点
      */
     public function addFreeServers(array $servers, User $user, Request $request): array
     {
@@ -131,14 +170,17 @@ class Plugin extends AbstractPlugin
             return $servers;
         }
 
-        return $this->freeServers($servers);
+        return collect($servers)
+            ->merge($this->getCachedFreeServers())
+            ->values()
+            ->toArray();
     }
 
     /**
-     * 判断用户是否在允许的用户组中。
-     * @param User $user
+     * 判断用户是否属于免费节点允许的分组。
      *
-     * @return bool
+     * @param User $user 当前用户
+     * @return bool 用户分组是否在允许列表中
      */
     private function isAllowedGroup(User $user): bool
     {
@@ -159,15 +201,29 @@ class Plugin extends AbstractPlugin
         return in_array((int) $user->group_id, $allowedGroupIds, true);
     }
 
-    /** 获取按优先顺序排列的免费节点订阅地址。 */
-    private function getSubscriptionUrls(): array
+    /**
+     * 解析配置中的订阅地址，并保留管理员设置的优先顺序。
+     *
+     * @return array<int, string> 订阅地址列表
+     */
+    private function getConfiguredSubscriptionUrls(): array
     {
         $configuredUrls = (string) $this->getConfig('subscription_url', '');
 
-        $urls = array_values(array_filter(array_map(
+        return array_values(array_filter(array_map(
             'trim',
             preg_split('/[\r\n|,]+/', $configuredUrls) ?: []
         ), fn(string $url): bool => $url !== ''));
+    }
+
+    /**
+     * 返回当前未处于 404 冷却期的地址，并保持配置顺序。
+     *
+     * @return array<int, string> 可用的订阅地址列表
+     */
+    private function getSubscriptionUrls(): array
+    {
+        $urls = $this->getConfiguredSubscriptionUrls();
 
         return array_values(array_filter(
             $urls,
@@ -175,28 +231,186 @@ class Plugin extends AbstractPlugin
         ));
     }
 
-    /** 404 地址冷却到次日早上 8 点，时间使用应用时区。 */
+    /**
+     * 将返回 404 的地址冷却到次日早上 8 点，使用应用时区计算时间。
+     *
+     * @param string $url 返回 404 的订阅地址
+     * @return void
+     */
     private function cooldownSubscriptionUrl(string $url): void
     {
         $restoreAt = now()->addDay()->startOfDay()->addHours(8);
         Cache::put($this->getUrlCooldownCacheKey($url), true, $restoreAt);
     }
 
+    /**
+     * 根据订阅地址生成 404 冷却标记对应的缓存键。
+     *
+     * @param string $url 订阅地址
+     * @return string 冷却标记缓存键
+     */
     private function getUrlCooldownCacheKey(string $url): string
     {
         return self::URL_COOLDOWN_CACHE_PREFIX . $url;
     }
 
     /**
-     * 获取并合并远程免费节点。
+     * 根据订阅地址生成缓存哈希，地址配置变更后使用新的缓存键。
      *
-     * @param array<int, array<string, mixed>> $servers
-     * @return array<int, array<string, mixed>>
-     * @throws ConnectionException
+     * @return string 订阅地址配置的哈希值
      */
-    private function freeServers(array $servers): array
+    private function getSubscriptionCacheHash(): string
     {
-        $jsonDecode = null;
+        return hash('sha256', implode("\n", $this->getConfiguredSubscriptionUrls()));
+    }
+
+    /**
+     * 获取免费节点数组对应的缓存键。
+     *
+     * @return string 免费节点缓存键
+     */
+    private function getNodesCacheKey(): string
+    {
+        return self::NODE_CACHE_KEY_PREFIX . $this->getSubscriptionCacheHash();
+    }
+
+    /**
+     * 获取刷新状态对应的缓存键。
+     *
+     * @return string 刷新状态缓存键
+     */
+    private function getRefreshStateCacheKey(): string
+    {
+        return self::REFRESH_STATE_CACHE_KEY_PREFIX
+            . $this->getSubscriptionCacheHash()
+            . ':'
+            . $this->getRefreshIntervalMinutes();
+    }
+
+    /**
+     * 读取缓存中的最近一次成功节点；超过保留期限后返回空数组。
+     *
+     * @return array<int, array<string, mixed>> 可用的免费节点列表
+     */
+    private function getCachedFreeServers(): array
+    {
+        $cached = Cache::get($this->getNodesCacheKey());
+        if (!is_array($cached) || !is_array($cached['servers'] ?? null)) {
+            return [];
+        }
+
+        $fetchedAt = (int) ($cached['fetched_at'] ?? 0);
+        if ($fetchedAt <= 0 || $fetchedAt < now()->subHours($this->getStaleRetentionHours())->timestamp) {
+            return [];
+        }
+
+        return array_values($cached['servers']);
+    }
+
+    /**
+     * 每分钟由调度器调用，仅在缓存缺失或刷新时间到达时请求上游。
+     *
+     * @return void
+     */
+    private function refreshSubscriptionCacheIfDue(): void
+    {
+        if ($this->getConfiguredSubscriptionUrls() === []) {
+            return;
+        }
+
+        $stateKey = $this->getRefreshStateCacheKey();
+        $state = Cache::get($stateKey, []);
+        $state = is_array($state) ? $state : [];
+        if ((int) ($state['next_attempt_at'] ?? 0) > now()->timestamp) {
+            return;
+        }
+
+        try {
+            if ($this->getSubscriptionUrls() === []) {
+                $state['next_attempt_at'] = now()->addMinutes(5)->timestamp;
+                Cache::put($stateKey, $state, now()->addDays(8));
+                return;
+            }
+
+            $servers = $this->fetchFreeServers();
+            if ($servers === null || $servers === []) {
+                $this->scheduleRefreshRetry($stateKey, $state);
+                return;
+            }
+
+            $refreshedAt = now();
+            Cache::put($this->getNodesCacheKey(), [
+                'servers' => array_values($servers),
+                'fetched_at' => $refreshedAt->timestamp,
+            ], $refreshedAt->copy()->addHours($this->getStaleRetentionHours()));
+
+            Cache::put($stateKey, [
+                'failure_count' => 0,
+                'last_success_at' => $refreshedAt->timestamp,
+                'next_attempt_at' => $refreshedAt->copy()->addMinutes($this->getRefreshIntervalMinutes())->timestamp,
+            ], $refreshedAt->copy()->addDays(8));
+        } catch (Throwable $e) {
+            Log::warning('免费节点缓存刷新失败', [
+                'error' => $e->getMessage(),
+            ]);
+            $this->scheduleRefreshRetry($stateKey, $state);
+        }
+    }
+
+    /**
+     * 记录失败次数和下次重试时间，不修改最近一次成功的节点缓存。
+     *
+     * @param string $stateKey 刷新状态缓存键
+     * @param array<string, int|null> $state 当前刷新状态
+     * @return void
+     */
+    private function scheduleRefreshRetry(string $stateKey, array $state): void
+    {
+        $failureCount = min(8, (int) ($state['failure_count'] ?? 0) + 1);
+        $retryMinutes = min(5 * (2 ** ($failureCount - 1)), $this->getRefreshIntervalMinutes());
+
+        Cache::put($stateKey, [
+            'failure_count' => $failureCount,
+            'last_success_at' => $state['last_success_at'] ?? null,
+            'next_attempt_at' => now()->addMinutes($retryMinutes)->timestamp,
+        ], now()->addDays(8));
+    }
+
+    /**
+     * 读取缓存刷新间隔；无效配置使用 30 分钟默认值。
+     *
+     * @return int 刷新间隔，单位为分钟
+     */
+    private function getRefreshIntervalMinutes(): int
+    {
+        $minutes = filter_var($this->getConfig('refresh_interval_minutes', 30), FILTER_VALIDATE_INT);
+
+        return $minutes !== false && $minutes >= 1 && $minutes <= 1440 ? $minutes : 30;
+    }
+
+    /**
+     * 读取最近成功节点的保留时长，并确保不短于刷新间隔。
+     *
+     * @return int 缓存保留时长，单位为小时
+     */
+    private function getStaleRetentionHours(): int
+    {
+        $hours = filter_var($this->getConfig('stale_retention_hours', 72), FILTER_VALIDATE_INT);
+        $hours = $hours !== false && $hours >= 24 && $hours <= 168 ? $hours : 72;
+
+        return max($hours, (int) ceil($this->getRefreshIntervalMinutes() / 60));
+    }
+
+    /**
+     * 按配置顺序获取远程节点并转换为 XBoard 节点。
+     *
+     * 获取失败或没有有效节点时返回 null，调用方会保留最近一次成功缓存。
+     *
+     * @return array<int, array<string, mixed>>|null
+     */
+    private function fetchFreeServers(): ?array
+    {
+        $subscriptionData = null;
         $loaded = false;
         $lastUrl = null;
 
@@ -219,10 +433,10 @@ class Plugin extends AbstractPlugin
                         'url' => $url,
                     ]);
 
-                    return $servers;
+                    return null;
                 }
 
-                $jsonDecode = $response->json();
+                $subscriptionData = $response->json();
                 $loaded = true;
                 break;
             } catch (Throwable $e) {
@@ -231,7 +445,7 @@ class Plugin extends AbstractPlugin
                     'error' => $e->getMessage(),
                 ]);
 
-                return $servers;
+                return null;
             }
         }
 
@@ -241,19 +455,22 @@ class Plugin extends AbstractPlugin
                 'url' => $lastUrl,
             ]);
 
-            return $servers;
+            return null;
         }
 
-        if (!is_array($jsonDecode) || !isset($jsonDecode['outbounds']) || !is_array($jsonDecode['outbounds'])) {
+        $outbounds = is_array($subscriptionData) ? ($subscriptionData['outbounds'] ?? null) : null;
+        if (!is_array($outbounds)) {
             Log::warning('免费节点订阅内容格式无效', [
                 'url' => $lastUrl,
             ]);
 
-            return $servers;
+            return null;
         }
 
-        // 剔除推广/引流的假节点。
-        $filtered = collect($jsonDecode['outbounds'])
+        /*
+         * 过滤推广和引流节点，只转换可用的代理节点。
+         */
+        $filtered = collect($outbounds)
             ->filter(function ($item) {
                 if (!is_array($item) || count($item) < 7) {
                     return false;
@@ -264,67 +481,25 @@ class Plugin extends AbstractPlugin
             })
             ->values();
 
-        $converted = collect($filtered)->values()
+        $converted = $filtered
             ->map(fn($outbound, $i) => $this->convertOutboundToServer($outbound, $i + 1))
             ->toArray();
 
-        return collect($servers)->merge($converted)->values()->toArray();
+        return $converted === [] ? null : array_values($converted);
     }
 
     /**
-     * 猜测节点标签的国家标签。
-     * @param string $tag
-     * @param string $prefix
+     * 将 sing-box outbound 转换为 XBoard VLESS 节点。
      *
-     * @return string
-     */
-    private function guessCountryLabel(string $tag, string $prefix = ''): string
-    {
-        $map = [
-            'HK' => '🇭🇰 香港', 'TW' => '🇹🇼 台湾', 'MO' => '🇲🇴 澳门',
-            'CN' => '🇨🇳 中国', 'JP' => '🇯🇵 日本', 'KR' => '🇰🇷 韩国',
-            'SG' => '🇸🇬 新加坡', 'US' => '🇺🇸 美国', 'CA' => '🇨🇦 加拿大',
-            'GB' => '🇬🇧 英国', 'UK' => '🇬🇧 英国', 'DE' => '🇩🇪 德国',
-            'FR' => '🇫🇷 法国', 'NL' => '🇳🇱 荷兰', 'IT' => '🇮🇹 意大利',
-            'ES' => '🇪🇸 西班牙', 'PT' => '🇵🇹 葡萄牙', 'CH' => '🇨🇭 瑞士',
-            'FI' => '🇫🇮 芬兰', 'SE' => '🇸🇪 瑞典', 'NO' => '🇳🇴 挪威',
-            'DK' => '🇩🇰 丹麦', 'IE' => '🇮🇪 爱尔兰', 'PL' => '🇵🇱 波兰',
-            'AT' => '🇦🇹 奥地利', 'BE' => '🇧🇪 比利时', 'LV' => '🇱🇻 拉脱维亚',
-            'LT' => '🇱🇹 立陶宛', 'EE' => '🇪🇪 爱沙尼亚', 'RU' => '🇷🇺 俄罗斯',
-            'UA' => '🇺🇦 乌克兰', 'TR' => '🇹🇷 土耳其', 'IN' => '🇮🇳 印度',
-            'ID' => '🇮🇩 印度尼西亚', 'MY' => '🇲🇾 马来西亚', 'TH' => '🇹🇭 泰国',
-            'VN' => '🇻🇳 越南', 'PH' => '🇵🇭 菲律宾', 'AU' => '🇦🇺 澳大利亚',
-            'NZ' => '🇳🇿 新西兰', 'BR' => '🇧🇷 巴西', 'AR' => '🇦🇷 阿根廷',
-            'MX' => '🇲🇽 墨西哥', 'ZA' => '🇿🇦 南非', 'AE' => '🇦🇪 阿联酋',
-            'IL' => '🇮🇱 以色列', 'SA' => '🇸🇦 沙特',
-        ];
-
-        foreach ($map as $code => $replace) {
-            if (str_contains($tag, $code)) {
-                [$flag, $name] = explode(' ', $replace, 2);
-                // 先只替换文字部分
-                $text = str_replace($code, $prefix . $name, $tag);
-                // 去掉所有空格
-                $text = str_replace(' ', '', $text);
-                // 拼上国旗+空格
-                return $flag . ' ' . $text;
-            }
-        }
-
-        return '🇺🇸' . ' ' . $tag;
-    }
-
-    /**
-     * 将远程 outbound 转换为 XBoard 节点。
-     *
-     * @param array<string, mixed> $outbound
-     * @return array<string, mixed>
+     * @param array<string, mixed> $outbound sing-box 出站配置
+     * @param int $sort 节点排序值
+     * @return array<string, mixed> XBoard 节点数据
      */
     private function convertOutboundToServer(array $outbound, int $sort = 0): array
     {
         $server = self::SERVER_TEMPLATE;
         $server['id'] = null;
-        $server['name'] = $outbound['tag']; //$this->guessCountryLabel($outbound['tag'] ?? '', 'CF');
+        $server['name'] = (string) ($outbound['tag'] ?? '');
         $server['sort'] = $sort;
         $server['created_at'] = null;
         $server['updated_at'] = null;
