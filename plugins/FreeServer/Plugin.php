@@ -24,12 +24,12 @@ class Plugin extends AbstractPlugin
     /**
      * 转换后免费节点缓存键前缀；版本号用于区分缓存结构。
      */
-    private const NODE_CACHE_KEY_PREFIX = 'free_server:subscription_nodes:v1:';
+    private const NODE_CACHE_KEY_PREFIX = 'free_server:subscription_nodes:v2:';
 
     /**
      * 刷新状态缓存键前缀。
      */
-    private const REFRESH_STATE_CACHE_KEY_PREFIX = 'free_server:refresh_state:v1:';
+    private const REFRESH_STATE_CACHE_KEY_PREFIX = 'free_server:refresh_state:v2:';
 
     /**
      * 远程 VLESS 节点转换为 XBoard 节点时使用的字段模板。
@@ -284,27 +284,22 @@ class Plugin extends AbstractPlugin
         return self::REFRESH_STATE_CACHE_KEY_PREFIX
             . $this->getSubscriptionCacheHash()
             . ':'
-            . $this->getRefreshIntervalMinutes();
+            . $this->getCacheTtlMinutes();
     }
 
     /**
-     * 读取缓存中的最近一次成功节点；超过保留期限后返回空数组。
+     * 读取缓存中尚未过期的免费节点。
      *
      * @return array<int, array<string, mixed>> 可用的免费节点列表
      */
     private function getCachedFreeServers(): array
     {
-        $cached = Cache::get($this->getNodesCacheKey());
-        if (!is_array($cached) || !is_array($cached['servers'] ?? null)) {
+        $servers = Cache::get($this->getNodesCacheKey(), []);
+        if (!is_array($servers)) {
             return [];
         }
 
-        $fetchedAt = (int) ($cached['fetched_at'] ?? 0);
-        if ($fetchedAt <= 0 || $fetchedAt < now()->subHours($this->getStaleRetentionHours())->timestamp) {
-            return [];
-        }
-
-        return array_values($cached['servers']);
+        return array_values(array_filter($servers, fn($server): bool => is_array($server)));
     }
 
     /**
@@ -318,14 +313,20 @@ class Plugin extends AbstractPlugin
             return;
         }
 
+        $nodesCacheKey = $this->getNodesCacheKey();
         $stateKey = $this->getRefreshStateCacheKey();
-        $state = Cache::get($stateKey, []);
-        $state = is_array($state) ? $state : [];
-        if ((int) ($state['next_attempt_at'] ?? 0) > now()->timestamp) {
-            return;
-        }
-
+        $state = [];
         try {
+            if (Cache::has($nodesCacheKey)) {
+                return;
+            }
+
+            $state = Cache::get($stateKey, []);
+            $state = is_array($state) ? $state : [];
+            if ((int) ($state['next_attempt_at'] ?? 0) > now()->timestamp) {
+                return;
+            }
+
             if ($this->getSubscriptionUrls() === []) {
                 $state['next_attempt_at'] = now()->addMinutes(5)->timestamp;
                 Cache::put($stateKey, $state, now()->addDays(8));
@@ -338,17 +339,8 @@ class Plugin extends AbstractPlugin
                 return;
             }
 
-            $refreshedAt = now();
-            Cache::put($this->getNodesCacheKey(), [
-                'servers' => array_values($servers),
-                'fetched_at' => $refreshedAt->timestamp,
-            ], $refreshedAt->copy()->addHours($this->getStaleRetentionHours()));
-
-            Cache::put($stateKey, [
-                'failure_count' => 0,
-                'last_success_at' => $refreshedAt->timestamp,
-                'next_attempt_at' => $refreshedAt->copy()->addMinutes($this->getRefreshIntervalMinutes())->timestamp,
-            ], $refreshedAt->copy()->addDays(8));
+            Cache::put($nodesCacheKey, array_values($servers), now()->addMinutes($this->getCacheTtlMinutes()));
+            Cache::forget($stateKey);
         } catch (Throwable $e) {
             Log::warning('免费节点缓存刷新失败', [
                 'error' => $e->getMessage(),
@@ -358,7 +350,7 @@ class Plugin extends AbstractPlugin
     }
 
     /**
-     * 记录失败次数和下次重试时间，不修改最近一次成功的节点缓存。
+     * 记录失败次数和下次重试时间，不写入失败或空节点结果。
      *
      * @param string $stateKey 刷新状态缓存键
      * @param array<string, int|null> $state 当前刷新状态
@@ -367,44 +359,30 @@ class Plugin extends AbstractPlugin
     private function scheduleRefreshRetry(string $stateKey, array $state): void
     {
         $failureCount = min(8, (int) ($state['failure_count'] ?? 0) + 1);
-        $retryMinutes = min(5 * (2 ** ($failureCount - 1)), $this->getRefreshIntervalMinutes());
+        $retryMinutes = min(5 * (2 ** ($failureCount - 1)), $this->getCacheTtlMinutes());
 
         Cache::put($stateKey, [
             'failure_count' => $failureCount,
-            'last_success_at' => $state['last_success_at'] ?? null,
             'next_attempt_at' => now()->addMinutes($retryMinutes)->timestamp,
         ], now()->addDays(8));
     }
 
     /**
-     * 读取缓存刷新间隔；无效配置使用 30 分钟默认值。
+     * 读取节点缓存时长；无效配置使用 30 分钟默认值。
      *
-     * @return int 刷新间隔，单位为分钟
+     * @return int 节点缓存时长，单位为分钟
      */
-    private function getRefreshIntervalMinutes(): int
+    private function getCacheTtlMinutes(): int
     {
-        $minutes = filter_var($this->getConfig('refresh_interval_minutes', 30), FILTER_VALIDATE_INT);
+        $minutes = filter_var($this->getConfig('cache_ttl_minutes', 30), FILTER_VALIDATE_INT);
 
         return $minutes !== false && $minutes >= 1 && $minutes <= 1440 ? $minutes : 30;
     }
 
     /**
-     * 读取最近成功节点的保留时长，并确保不短于刷新间隔。
-     *
-     * @return int 缓存保留时长，单位为小时
-     */
-    private function getStaleRetentionHours(): int
-    {
-        $hours = filter_var($this->getConfig('stale_retention_hours', 72), FILTER_VALIDATE_INT);
-        $hours = $hours !== false && $hours >= 24 && $hours <= 168 ? $hours : 72;
-
-        return max($hours, (int) ceil($this->getRefreshIntervalMinutes() / 60));
-    }
-
-    /**
      * 按配置顺序获取远程节点并转换为 XBoard 节点。
      *
-     * 获取失败或没有有效节点时返回 null，调用方会保留最近一次成功缓存。
+     * 获取失败或没有有效节点时返回 null，调用方不会写入节点缓存。
      *
      * @return array<int, array<string, mixed>>|null
      */

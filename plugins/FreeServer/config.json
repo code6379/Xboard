@@ -19,17 +19,11 @@
             "placeholder": "每行填写一个订阅地址",
             "description": "用于拉取免费节点的 sing-box JSON 订阅地址，每行一个；也可用英文逗号分隔。地址返回 404 后会冷却至次日早上 8 点，并尝试下一个地址"
         },
-        "refresh_interval_minutes": {
+        "cache_ttl_minutes": {
             "type": "number",
             "default": 30,
-            "label": "缓存刷新间隔（分钟）",
-            "description": "后台缓存免费节点的刷新间隔，范围 1 至 1440 分钟，默认 30 分钟"
-        },
-        "stale_retention_hours": {
-            "type": "number",
-            "default": 72,
-            "label": "旧节点最长保留时间（小时）",
-            "description": "上游刷新失败时保留最后一次成功节点的最长时间，范围 24 至 168 小时"
+            "label": "节点缓存时间（分钟）",
+            "description": "免费节点在缓存中的有效时间，调度器每分钟检查是否需要刷新，范围 1 至 1440 分钟，默认 30 分钟"
         },
         "allowed_group_ids": {
             "type": "string",
