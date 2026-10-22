@@ -255,6 +255,29 @@ class Plugin extends AbstractPlugin
     }
 
     /**
+     * 缓存异常订阅地址；404 冷却到次日早上 8 点，其余异常按节点缓存时长冷却。
+     *
+     * @param string $url 订阅地址
+     * @param string $reason 失败原因
+     * @param array<string, mixed> $context 请求诊断信息
+     * @return void
+     */
+    private function markSubscriptionUrlUnavailable(string $url, string $reason, array $context): void
+    {
+        if ($reason === 'http_404') {
+            $this->cooldownSubscriptionUrl($url);
+            $context['cache_policy'] = '次日 08:00 恢复';
+        } else {
+            Cache::put($this->getUrlCooldownCacheKey($url), true, now()->addMinutes($this->getCacheTtlMinutes()));
+            $context['cache_policy'] = $this->getCacheTtlMinutes() . ' 分钟后重试';
+        }
+
+        Log::warning('免费节点订阅源获取失败，地址已缓存', array_merge($context, [
+            'reason' => $reason,
+        ]));
+    }
+
+    /**
      * 根据订阅地址生成缓存哈希，地址配置变更后使用新的缓存键。
      *
      * @return string 订阅地址配置的哈希值
@@ -327,13 +350,21 @@ class Plugin extends AbstractPlugin
                 return;
             }
 
-            if ($this->getSubscriptionUrls() === []) {
-                $state['next_attempt_at'] = now()->addMinutes(5)->timestamp;
+            $urls = $this->getSubscriptionUrls();
+            if ($urls === []) {
+                $state['last_attempt_at'] = now()->timestamp;
+                $state['last_result'] = 'all_urls_cached_or_cooled';
+                $state['next_attempt_at'] = now()->addMinute()->timestamp;
                 Cache::put($stateKey, $state, now()->addDays(8));
                 return;
             }
 
-            $servers = $this->fetchFreeServers();
+            Log::info('开始刷新免费节点订阅源', [
+                'url_count' => count($urls),
+                'cache_ttl_minutes' => $this->getCacheTtlMinutes(),
+            ]);
+
+            $servers = $this->fetchFreeServers($urls);
             if ($servers === null || $servers === []) {
                 $this->scheduleRefreshRetry($stateKey, $state);
                 return;
@@ -341,9 +372,14 @@ class Plugin extends AbstractPlugin
 
             Cache::put($nodesCacheKey, array_values($servers), now()->addMinutes($this->getCacheTtlMinutes()));
             Cache::forget($stateKey);
+
+            Log::info('免费节点缓存刷新成功', [
+                'node_count' => count($servers),
+                'cache_ttl_minutes' => $this->getCacheTtlMinutes(),
+            ]);
         } catch (Throwable $e) {
             Log::warning('免费节点缓存刷新失败', [
-                'error' => $e->getMessage(),
+                'error_type' => get_class($e),
             ]);
             $this->scheduleRefreshRetry($stateKey, $state);
         }
@@ -359,12 +395,25 @@ class Plugin extends AbstractPlugin
     private function scheduleRefreshRetry(string $stateKey, array $state): void
     {
         $failureCount = min(8, (int) ($state['failure_count'] ?? 0) + 1);
-        $retryMinutes = min(5 * (2 ** ($failureCount - 1)), $this->getCacheTtlMinutes());
+        $retryMinutes = $this->getSubscriptionUrls() === []
+            ? 1
+            : $this->getCacheTtlMinutes();
+        $attemptedAt = now();
 
-        Cache::put($stateKey, [
+        $state = array_merge($state, [
             'failure_count' => $failureCount,
-            'next_attempt_at' => now()->addMinutes($retryMinutes)->timestamp,
-        ], now()->addDays(8));
+            'last_attempt_at' => $attemptedAt->timestamp,
+            'last_result' => 'no_usable_source',
+            'next_attempt_at' => $attemptedAt->copy()->addMinutes($retryMinutes)->timestamp,
+        ]);
+
+        Cache::put($stateKey, $state, $attemptedAt->copy()->addDays(8));
+
+        Log::warning('本轮未获得可用的免费节点，已缓存失败状态', [
+            'failure_count' => $failureCount,
+            'retry_after_minutes' => $retryMinutes,
+            'cooldown_url_count' => count($this->getConfiguredSubscriptionUrls()) - count($this->getSubscriptionUrls()),
+        ]);
     }
 
     /**
@@ -380,90 +429,113 @@ class Plugin extends AbstractPlugin
     }
 
     /**
-     * 按配置顺序获取远程节点并转换为 XBoard 节点。
+     * 按配置顺序请求订阅源，缓存异常地址并尝试下一个地址。
      *
-     * 获取失败或没有有效节点时返回 null，调用方不会写入节点缓存。
-     *
-     * @return array<int, array<string, mixed>>|null
+     * @param array<int, string> $urls 当前未处于冷却期的订阅地址
+     * @return array<int, array<string, mixed>>|null 可用节点列表；全部失败时返回 null
      */
-    private function fetchFreeServers(): ?array
+    private function fetchFreeServers(array $urls): ?array
     {
-        $subscriptionData = null;
-        $loaded = false;
-        $lastUrl = null;
+        $failedUrlCount = 0;
 
-        foreach ($this->getSubscriptionUrls() as $url) {
-            $lastUrl = $url;
+        foreach ($urls as $index => $url) {
+            $sourceContext = [
+                'url_index' => $index + 1,
+                'host' => (string) (parse_url($url, PHP_URL_HOST) ?: 'unknown'),
+            ];
 
             try {
                 $response = Http::timeout(30)
                     ->withHeader('user-agent', 'sing-box')
                     ->get($url);
+                $body = $response->body();
+                $responseContext = array_merge($sourceContext, [
+                    'http_status' => $response->status(),
+                    'content_type' => (string) $response->header('Content-Type'),
+                    'body_bytes' => strlen($body),
+                ]);
 
                 if ($response->status() === 404) {
-                    $this->cooldownSubscriptionUrl($url);
+                    $this->markSubscriptionUrlUnavailable($url, 'http_404', $responseContext);
+                    $failedUrlCount++;
                     continue;
                 }
 
-                if ($response->failed()) {
-                    Log::warning('免费节点订阅请求失败', [
-                        'status' => $response->status(),
-                        'url' => $url,
-                    ]);
-
-                    return null;
+                if (!$response->successful()) {
+                    $this->markSubscriptionUrlUnavailable($url, 'http_status', $responseContext);
+                    $failedUrlCount++;
+                    continue;
                 }
 
-                $subscriptionData = $response->json();
-                $loaded = true;
-                break;
-            } catch (Throwable $e) {
-                Log::warning('免费节点订阅请求异常', [
-                    'url' => $url,
-                    'error' => $e->getMessage(),
-                ]);
+                $subscriptionData = json_decode($body, true);
+                if (!is_array($subscriptionData)) {
+                    $this->markSubscriptionUrlUnavailable($url, 'invalid_json', array_merge($responseContext, [
+                        'json_error' => json_last_error_msg(),
+                    ]));
+                    $failedUrlCount++;
+                    continue;
+                }
 
-                return null;
+                $outbounds = $subscriptionData['outbounds'] ?? null;
+                if (!is_array($outbounds)) {
+                    $this->markSubscriptionUrlUnavailable($url, 'missing_outbounds', array_merge($responseContext, [
+                        'top_level_keys' => array_keys($subscriptionData),
+                    ]));
+                    $failedUrlCount++;
+                    continue;
+                }
+
+                $converted = [];
+                $rejectedFieldCount = 0;
+                $rejectedPromoCount = 0;
+
+                foreach ($outbounds as $outbound) {
+                    if (!is_array($outbound) || count($outbound) < 7) {
+                        $rejectedFieldCount++;
+                        continue;
+                    }
+
+                    $tag = (string) ($outbound['tag'] ?? '');
+                    if (str_contains($tag, 't.me') || str_contains($tag, '加入我的频道')) {
+                        $rejectedPromoCount++;
+                        continue;
+                    }
+
+                    $converted[] = $this->convertOutboundToServer($outbound, count($converted) + 1);
+                }
+
+                if ($converted === []) {
+                    $this->markSubscriptionUrlUnavailable($url, 'no_usable_outbounds', array_merge($responseContext, [
+                        'outbound_count' => count($outbounds),
+                        'rejected_field_count' => $rejectedFieldCount,
+                        'rejected_promo_count' => $rejectedPromoCount,
+                    ]));
+                    $failedUrlCount++;
+                    continue;
+                }
+
+                Log::info('免费节点订阅源解析成功', array_merge($responseContext, [
+                    'outbound_count' => count($outbounds),
+                    'accepted_node_count' => count($converted),
+                    'rejected_field_count' => $rejectedFieldCount,
+                    'rejected_promo_count' => $rejectedPromoCount,
+                ]));
+
+                return $converted;
+            } catch (Throwable $e) {
+                $this->markSubscriptionUrlUnavailable($url, 'request_exception', array_merge($sourceContext, [
+                    'exception_type' => get_class($e),
+                ]));
+                $failedUrlCount++;
             }
         }
 
-        if (!$loaded) {
-            Log::warning('免费节点订阅地址均返回 404，已冷却至次日早上 8 点', [
-                'status' => 404,
-                'url' => $lastUrl,
-            ]);
+        Log::warning('本轮所有免费节点订阅源均未获得可用节点', [
+            'attempted_url_count' => count($urls),
+            'failed_url_count' => $failedUrlCount,
+        ]);
 
-            return null;
-        }
-
-        $outbounds = is_array($subscriptionData) ? ($subscriptionData['outbounds'] ?? null) : null;
-        if (!is_array($outbounds)) {
-            Log::warning('免费节点订阅内容格式无效', [
-                'url' => $lastUrl,
-            ]);
-
-            return null;
-        }
-
-        /*
-         * 过滤推广和引流节点，只转换可用的代理节点。
-         */
-        $filtered = collect($outbounds)
-            ->filter(function ($item) {
-                if (!is_array($item) || count($item) < 7) {
-                    return false;
-                }
-
-                $tag = $item['tag'] ?? '';
-                return !str_contains($tag, 't.me') && !str_contains($tag, '加入我的频道');
-            })
-            ->values();
-
-        $converted = $filtered
-            ->map(fn($outbound, $i) => $this->convertOutboundToServer($outbound, $i + 1))
-            ->toArray();
-
-        return $converted === [] ? null : array_values($converted);
+        return null;
     }
 
     /**
